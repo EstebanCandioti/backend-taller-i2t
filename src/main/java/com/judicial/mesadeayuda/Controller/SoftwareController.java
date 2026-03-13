@@ -75,6 +75,12 @@ public class SoftwareController {
         return ResponseEntity.ok(ApiResponse.success("Software actualizado", software));
     }
 
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<SoftwareResponseDTO>> restaurar(@PathVariable Integer id) {
+        SoftwareResponseDTO software = softwareService.restaurar(id);
+        return ResponseEntity.ok(ApiResponse.success("Software restaurado exitosamente", software));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable Integer id) {
         softwareService.eliminar(id);

@@ -87,6 +87,12 @@ public class ContratoController {
         return ResponseEntity.ok(ApiResponse.success("Contrato actualizado", contrato));
     }
 
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<ContratoResponseDTO>> restaurar(@PathVariable Integer id) {
+        ContratoResponseDTO contrato = contratoService.restaurar(id);
+        return ResponseEntity.ok(ApiResponse.success("Contrato restaurado exitosamente", contrato));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable Integer id) {
         contratoService.eliminar(id);

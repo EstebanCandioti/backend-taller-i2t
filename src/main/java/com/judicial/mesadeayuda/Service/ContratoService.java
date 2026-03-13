@@ -205,6 +205,24 @@ public class ContratoService {
         contratoRepository.save(contrato);
     }
 
+    @Auditable(entidad = "Contrato", accion = AuditLog.Accion.RESTORE)
+    public ContratoResponseDTO restaurar(Integer id) {
+        Contrato contrato = contratoRepository.findEliminadoById(id)
+                .orElseThrow(() -> new NotFoundException(
+                        "No se encontró un contrato eliminado con id: " + id));
+
+        if (!contrato.isEliminado()) {
+            throw new BusinessException("El contrato no está eliminado");
+        }
+
+        contrato.setEliminado(false);
+        contrato.setFechaEliminacion(null);
+        contrato.setEliminadoPor(null);
+
+        contrato = contratoRepository.save(contrato);
+        return ContratoMapper.toDTO(contrato);
+    }
+
     // ── HELPERS ───────────────────────────────────────────────
 
     private Contrato buscarContrato(Integer id) {

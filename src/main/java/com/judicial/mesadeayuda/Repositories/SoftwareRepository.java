@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository para la entidad Software.
@@ -67,4 +68,7 @@ public interface SoftwareRepository extends JpaRepository<Software, Integer> {
      */
     @Query("SELECT COUNT(s) > 0 FROM Software s WHERE s.contrato.id = :contratoId")
     boolean existsByContratoId(Integer contratoId);
+
+    @Query(value = "SELECT * FROM software WHERE id = :id AND eliminado = 1", nativeQuery = true)
+    Optional<Software> findEliminadoById(Integer id);
 }

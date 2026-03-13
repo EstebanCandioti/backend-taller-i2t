@@ -39,10 +39,10 @@ public class SoftwareService {
     private final UsuarioRepository usuarioRepository;
 
     public SoftwareService(SoftwareRepository softwareRepository,
-                           ContratoRepository contratoRepository,
-                           JuzgadoRepository juzgadoRepository,
-                           HardwareRepository hardwareRepository,
-                           UsuarioRepository usuarioRepository) {
+            ContratoRepository contratoRepository,
+            JuzgadoRepository juzgadoRepository,
+            HardwareRepository hardwareRepository,
+            UsuarioRepository usuarioRepository) {
         this.softwareRepository = softwareRepository;
         this.contratoRepository = contratoRepository;
         this.juzgadoRepository = juzgadoRepository;
@@ -133,8 +133,25 @@ public class SoftwareService {
         if (dto.getCantidadLicencias() < software.getLicenciasEnUso()) {
             throw new BusinessException(
                     "La cantidad de licencias (" + dto.getCantidadLicencias() +
-                    ") no puede ser menor a las licencias en uso (" + software.getLicenciasEnUso() + ")");
+                            ") no puede ser menor a las licencias en uso (" + software.getLicenciasEnUso() + ")");
         }
+
+        // ── Control de licenciasEnUso por cambio de asignación ──
+        boolean teniaAsignacion = software.getHardware() != null || software.getJuzgado() != null;
+        boolean tieneAsignacion = hardware != null || dto.getJuzgadoId() != null;
+
+        if (!teniaAsignacion && tieneAsignacion) {
+            // No tenía asignación → ahora sí: incrementar
+            int nuevasEnUso = software.getLicenciasEnUso() + 1;
+            if (nuevasEnUso > software.getCantidadLicencias()) {
+                throw new BusinessException("No hay licencias disponibles");
+            }
+            software.setLicenciasEnUso(nuevasEnUso);
+        } else if (teniaAsignacion && !tieneAsignacion) {
+            // Tenía asignación → ahora no: decrementar
+            software.setLicenciasEnUso(Math.max(0, software.getLicenciasEnUso() - 1));
+        }
+        // Si cambió de una asignación a otra, o no cambió: no tocar licenciasEnUso
 
         software.setNombre(dto.getNombre());
         software.setProveedor(dto.getProveedor());
@@ -157,6 +174,24 @@ public class SoftwareService {
         software.setFechaEliminacion(LocalDateTime.now());
         software.setEliminadoPor(obtenerUsuarioActual());
         softwareRepository.save(software);
+    }
+
+    @Auditable(entidad = "Software", accion = AuditLog.Accion.RESTORE)
+    public SoftwareResponseDTO restaurar(Integer id) {
+        Software software = softwareRepository.findEliminadoById(id)
+                .orElseThrow(() -> new NotFoundException(
+                        "No se encontró un software eliminado con id: " + id));
+
+        if (!software.isEliminado()) {
+            throw new BusinessException("El software no está eliminado");
+        }
+
+        software.setEliminado(false);
+        software.setFechaEliminacion(null);
+        software.setEliminadoPor(null);
+
+        software = softwareRepository.save(software);
+        return SoftwareMapper.toDTO(software);
     }
 
     // ── HELPERS ───────────────────────────────────────────────
