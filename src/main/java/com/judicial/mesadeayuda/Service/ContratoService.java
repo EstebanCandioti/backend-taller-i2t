@@ -51,33 +51,26 @@ public class ContratoService {
     @Transactional(readOnly = true)
     public List<ContratoResponseDTO> listarTodos() {
         return contratoRepository.findAll().stream()
-                .map(ContratoMapper::toDTO)
+                .map(this::mapearContratoResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public ContratoResponseDTO obtenerPorId(Integer id) {
-        return ContratoMapper.toDTO(buscarContrato(id));
+        return mapearContratoResponse(buscarContrato(id));
     }
 
-    /**
-     * Contratos próximos a vencer según su configuración individual de días de
-     * alerta.
-     */
     @Transactional(readOnly = true)
     public List<ContratoResponseDTO> proximosAVencer() {
         return contratoRepository.findProximosAVencerV2(LocalDate.now()).stream()
-                .map(ContratoMapper::toDTO)
+                .map(this::mapearContratoResponse)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Contratos ya vencidos.
-     */
     @Transactional(readOnly = true)
     public List<ContratoResponseDTO> vencidos() {
         return contratoRepository.findByFechaFinBeforeOrderByFechaFinDesc(LocalDate.now()).stream()
-                .map(ContratoMapper::toDTO)
+                .map(this::mapearContratoResponse)
                 .collect(Collectors.toList());
     }
 
@@ -100,7 +93,8 @@ public class ContratoService {
                 .build();
 
         contrato = contratoRepository.save(contrato);
-        return ContratoMapper.toDTO(contrato);
+        sincronizarAsignacionesDirectas(contrato, dto.getHardwareIds(), dto.getSoftwareIds());
+        return mapearContratoResponse(contrato);
     }
 
     @Auditable(entidad = "Contrato", accion = AuditLog.Accion.UPDATE)
@@ -122,21 +116,10 @@ public class ContratoService {
         contrato.setSoftwareLicencias(resolverSoftware(dto.getSoftwareIds()));
 
         contrato = contratoRepository.save(contrato);
-        return ContratoMapper.toDTO(contrato);
+        sincronizarAsignacionesDirectas(contrato, dto.getHardwareIds(), dto.getSoftwareIds());
+        return mapearContratoResponse(contrato);
     }
 
-    // ── RENOVAR ───────────────────────────────────────────────
-
-    /**
-     * Renueva un contrato existente.
-     *
-     * Crea un nuevo contrato copiando los datos del original (proveedor, cobertura,
-     * diasAlertaVencimiento) y sobreescribiendo fechas, monto y observaciones
-     * con los del DTO de renovación.
-     *
-     * Reasigna automáticamente todo el hardware y software vinculado
-     * al contrato original hacia el contrato nuevo.
-     */
     @Auditable(entidad = "Contrato", accion = AuditLog.Accion.CREATE)
     public ContratoResponseDTO renovar(Integer id, ContratoRenovarRequestDTO dto) {
         Contrato original = buscarContrato(id);
@@ -163,8 +146,13 @@ public class ContratoService {
                 .build();
 
         renovado = contratoRepository.save(renovado);
+        renovado.setHardware(
+                original.getHardware() != null ? new ArrayList<>(original.getHardware()) : new ArrayList<>());
+        renovado.setSoftwareLicencias(
+                original.getSoftwareLicencias() != null ? new ArrayList<>(original.getSoftwareLicencias())
+                        : new ArrayList<>());
+        renovado = contratoRepository.save(renovado);
 
-        // Reasignar hardware por contrato_id directo
         List<Hardware> hardwareOriginal = hardwareRepository.findByContratoId(original.getId());
         if (hardwareOriginal != null && !hardwareOriginal.isEmpty()) {
             for (Hardware hardware : hardwareOriginal) {
@@ -173,7 +161,6 @@ public class ContratoService {
             }
         }
 
-        // Reasignar software por contrato_id directo
         List<Software> softwareOriginal = softwareRepository.findByContratoId(original.getId());
         if (softwareOriginal != null && !softwareOriginal.isEmpty()) {
             for (Software software : softwareOriginal) {
@@ -182,12 +169,9 @@ public class ContratoService {
             }
         }
 
-        return ContratoMapper.toDTO(renovado);
+        return mapearContratoResponse(renovado);
     }
 
-    /**
-     * Soft-delete. No se puede eliminar un contrato con software activo vinculado.
-     */
     @Auditable(entidad = "Contrato", accion = AuditLog.Accion.DELETE)
     public void eliminar(Integer id) {
         Contrato contrato = buscarContrato(id);
@@ -220,10 +204,8 @@ public class ContratoService {
         contrato.setEliminadoPor(null);
 
         contrato = contratoRepository.save(contrato);
-        return ContratoMapper.toDTO(contrato);
+        return mapearContratoResponse(contrato);
     }
-
-    // ── HELPERS ───────────────────────────────────────────────
 
     private Contrato buscarContrato(Integer id) {
         return contratoRepository.findById(id)
@@ -237,8 +219,9 @@ public class ContratoService {
     }
 
     private List<Hardware> resolverHardware(List<Integer> ids) {
-        if (ids == null || ids.isEmpty())
+        if (ids == null || ids.isEmpty()) {
             return new ArrayList<>();
+        }
         return ids.stream()
                 .map(hwId -> hardwareRepository.findById(hwId)
                         .orElseThrow(() -> new NotFoundException("Hardware", hwId)))
@@ -246,12 +229,64 @@ public class ContratoService {
     }
 
     private List<Software> resolverSoftware(List<Integer> ids) {
-        if (ids == null || ids.isEmpty())
+        if (ids == null || ids.isEmpty()) {
             return new ArrayList<>();
+        }
         return ids.stream()
                 .map(swId -> softwareRepository.findById(swId)
                         .orElseThrow(() -> new NotFoundException("Software", swId)))
                 .collect(Collectors.toList());
+    }
+
+    private void sincronizarAsignacionesDirectas(Contrato contrato, List<Integer> hardwareIds, List<Integer> softwareIds) {
+        List<Integer> hardwareSeleccionado = hardwareIds != null ? hardwareIds : new ArrayList<>();
+        List<Integer> softwareSeleccionado = softwareIds != null ? softwareIds : new ArrayList<>();
+
+        for (Hardware hardwareActual : hardwareRepository.findByContratoId(contrato.getId())) {
+            if (!hardwareSeleccionado.contains(hardwareActual.getId())) {
+                hardwareActual.setContrato(null);
+                hardwareRepository.save(hardwareActual);
+            }
+        }
+
+        for (Integer hardwareId : hardwareSeleccionado) {
+            Hardware hardware = hardwareRepository.findById(hardwareId)
+                    .orElseThrow(() -> new NotFoundException("Hardware", hardwareId));
+            hardware.setContrato(contrato);
+            hardwareRepository.save(hardware);
+        }
+
+        for (Integer softwareId : softwareSeleccionado) {
+            Software software = softwareRepository.findById(softwareId)
+                    .orElseThrow(() -> new NotFoundException("Software", softwareId));
+            software.setContrato(contrato);
+            softwareRepository.save(software);
+        }
+    }
+
+    private ContratoResponseDTO mapearContratoResponse(Contrato contrato) {
+        ContratoResponseDTO dto = ContratoMapper.toDTO(contrato);
+
+        dto.setHardware(hardwareRepository.findByContratoId(contrato.getId()).stream()
+                .map(hw -> ContratoResponseDTO.HardwareSimpleDTO.builder()
+                        .id(hw.getId())
+                        .nroInventario(hw.getNroInventario())
+                        .clase(hw.getClase())
+                        .marca(hw.getMarca())
+                        .modelo(hw.getModelo())
+                        .build())
+                .collect(Collectors.toList()));
+
+        dto.setSoftware(softwareRepository.findByContratoId(contrato.getId()).stream()
+                .map(sw -> ContratoResponseDTO.SoftwareSimpleDTO.builder()
+                        .id(sw.getId())
+                        .nombre(sw.getNombre())
+                        .proveedor(sw.getProveedor())
+                        .cantidadLicencias(sw.getCantidadLicencias())
+                        .build())
+                .collect(Collectors.toList()));
+
+        return dto;
     }
 
     private Usuario obtenerUsuarioActual() {

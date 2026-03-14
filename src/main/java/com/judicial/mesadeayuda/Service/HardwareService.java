@@ -18,6 +18,8 @@ import com.judicial.mesadeayuda.Entities.AuditLog;
 import com.judicial.mesadeayuda.Entities.Contrato;
 import com.judicial.mesadeayuda.Entities.Hardware;
 import com.judicial.mesadeayuda.Entities.Juzgado;
+import com.judicial.mesadeayuda.Entities.Software;
+import com.judicial.mesadeayuda.Entities.SoftwareHardware;
 import com.judicial.mesadeayuda.Entities.Usuario;
 import com.judicial.mesadeayuda.Exceptions.BusinessException;
 import com.judicial.mesadeayuda.Exceptions.NotFoundException;
@@ -26,6 +28,8 @@ import com.judicial.mesadeayuda.Mapper.TicketMapper;
 import com.judicial.mesadeayuda.Repositories.ContratoRepository;
 import com.judicial.mesadeayuda.Repositories.HardwareRepository;
 import com.judicial.mesadeayuda.Repositories.JuzgadoRepository;
+import com.judicial.mesadeayuda.Repositories.SoftwareHardwareRepository;
+import com.judicial.mesadeayuda.Repositories.SoftwareRepository;
 import com.judicial.mesadeayuda.Repositories.TicketRepository;
 import com.judicial.mesadeayuda.Repositories.UsuarioRepository;
 import com.judicial.mesadeayuda.Security.CustomUserDetails;
@@ -37,19 +41,28 @@ public class HardwareService {
     private final HardwareRepository hardwareRepository;
     private final JuzgadoRepository juzgadoRepository;
     private final ContratoRepository contratoRepository;
+    private final SoftwareRepository softwareRepository;
+    private final SoftwareHardwareRepository softwareHardwareRepository;
     private final UsuarioRepository usuarioRepository;
     private final TicketRepository ticketRepository;
+    private final AuditLogService auditLogService;
 
     public HardwareService(HardwareRepository hardwareRepository,
                            JuzgadoRepository juzgadoRepository,
                            ContratoRepository contratoRepository,
+                           SoftwareRepository softwareRepository,
+                           SoftwareHardwareRepository softwareHardwareRepository,
                            UsuarioRepository usuarioRepository,
-                           TicketRepository ticketRepository) {
+                           TicketRepository ticketRepository,
+                           AuditLogService auditLogService) {
         this.hardwareRepository = hardwareRepository;
         this.juzgadoRepository = juzgadoRepository;
         this.contratoRepository = contratoRepository;
+        this.softwareRepository = softwareRepository;
+        this.softwareHardwareRepository = softwareHardwareRepository;
         this.usuarioRepository = usuarioRepository;
         this.ticketRepository = ticketRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -157,6 +170,20 @@ public class HardwareService {
                     HttpStatus.CONFLICT);
         }
 
+        for (SoftwareHardware vinculo : softwareHardwareRepository.findByHardwareId(id)) {
+            Software software = vinculo.getSoftware();
+            software.setLicenciasEnUso(Math.max(0, software.getLicenciasEnUso() - 1));
+            softwareRepository.save(software);
+
+            String valorAnterior = serializarVinculo(vinculo);
+            vinculo.setEliminado(true);
+            vinculo.setFechaEliminacion(LocalDateTime.now());
+            vinculo.setEliminadoPor(obtenerUsuarioActual());
+            softwareHardwareRepository.save(vinculo);
+            auditLogService.registrar("SoftwareHardware", AuditLog.Accion.DELETE, vinculo.getId(),
+                    valorAnterior, null);
+        }
+
         hardware.setEliminado(true);
         hardware.setFechaEliminacion(LocalDateTime.now());
         hardware.setEliminadoPor(obtenerUsuarioActual());
@@ -199,5 +226,14 @@ public class HardwareService {
                 .getAuthentication().getPrincipal();
         return usuarioRepository.findById(user.getId())
                 .orElseThrow(() -> new NotFoundException("Usuario", user.getId()));
+    }
+
+    private String serializarVinculo(SoftwareHardware vinculo) {
+        return String.format(
+                "{\"id\":%d,\"softwareId\":%d,\"hardwareId\":%d,\"eliminado\":%s}",
+                vinculo.getId(),
+                vinculo.getSoftware().getId(),
+                vinculo.getHardware().getId(),
+                vinculo.isEliminado());
     }
 }

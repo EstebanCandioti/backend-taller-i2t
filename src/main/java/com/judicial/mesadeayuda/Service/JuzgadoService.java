@@ -15,12 +15,14 @@ import com.judicial.mesadeayuda.DTO.Response.JuzgadoResponseDTO;
 import com.judicial.mesadeayuda.Entities.AuditLog;
 import com.judicial.mesadeayuda.Entities.Circunscripcion;
 import com.judicial.mesadeayuda.Entities.Juzgado;
+import com.judicial.mesadeayuda.Entities.SoftwareJuzgado;
 import com.judicial.mesadeayuda.Entities.Usuario;
 import com.judicial.mesadeayuda.Exceptions.BusinessException;
 import com.judicial.mesadeayuda.Exceptions.NotFoundException;
 import com.judicial.mesadeayuda.Mapper.JuzgadoMapper;
 import com.judicial.mesadeayuda.Repositories.CircunscripcionRepository;
 import com.judicial.mesadeayuda.Repositories.JuzgadoRepository;
+import com.judicial.mesadeayuda.Repositories.SoftwareJuzgadoRepository;
 import com.judicial.mesadeayuda.Repositories.UsuarioRepository;
 import com.judicial.mesadeayuda.Security.CustomUserDetails;
 
@@ -30,14 +32,20 @@ public class JuzgadoService {
 
     private final JuzgadoRepository juzgadoRepository;
     private final CircunscripcionRepository circunscripcionRepository;
+    private final SoftwareJuzgadoRepository softwareJuzgadoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final AuditLogService auditLogService;
 
     public JuzgadoService(JuzgadoRepository juzgadoRepository,
                           CircunscripcionRepository circunscripcionRepository,
-                          UsuarioRepository usuarioRepository) {
+                          SoftwareJuzgadoRepository softwareJuzgadoRepository,
+                          UsuarioRepository usuarioRepository,
+                          AuditLogService auditLogService) {
         this.juzgadoRepository = juzgadoRepository;
         this.circunscripcionRepository = circunscripcionRepository;
+        this.softwareJuzgadoRepository = softwareJuzgadoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -86,9 +94,6 @@ public class JuzgadoService {
         return JuzgadoMapper.toDTO(juzgado);
     }
 
-    /**
-     * Soft-delete. No se puede eliminar un juzgado con hardware, software o tickets activos.
-     */
     @Auditable(entidad = "Juzgado", accion = AuditLog.Accion.DELETE)
     public void eliminar(Integer id) {
         Juzgado juzgado = buscarJuzgado(id);
@@ -98,15 +103,20 @@ public class JuzgadoService {
                     "No se puede eliminar el juzgado porque tiene hardware asociado",
                     HttpStatus.CONFLICT);
         }
-        if (juzgadoRepository.tieneSoftwareActivo(id)) {
-            throw new BusinessException(
-                    "No se puede eliminar el juzgado porque tiene software asociado",
-                    HttpStatus.CONFLICT);
-        }
         if (juzgadoRepository.tieneTicketsActivos(id)) {
             throw new BusinessException(
                     "No se puede eliminar el juzgado porque tiene tickets activos",
                     HttpStatus.CONFLICT);
+        }
+
+        for (SoftwareJuzgado vinculo : softwareJuzgadoRepository.findByJuzgadoIdAndEliminadoFalse(id)) {
+            String valorAnterior = serializarVinculo(vinculo);
+            vinculo.setEliminado(true);
+            vinculo.setFechaEliminacion(LocalDateTime.now());
+            vinculo.setEliminadoPor(obtenerUsuarioActual());
+            softwareJuzgadoRepository.save(vinculo);
+            auditLogService.registrar("SoftwareJuzgado", AuditLog.Accion.DELETE, vinculo.getId(),
+                    valorAnterior, null);
         }
 
         juzgado.setEliminado(true);
@@ -120,6 +130,15 @@ public class JuzgadoService {
     private Juzgado buscarJuzgado(Integer id) {
         return juzgadoRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Juzgado", id));
+    }
+
+    private String serializarVinculo(SoftwareJuzgado vinculo) {
+        return String.format(
+                "{\"id\":%d,\"softwareId\":%d,\"juzgadoId\":%d,\"eliminado\":%s}",
+                vinculo.getId(),
+                vinculo.getSoftware().getId(),
+                vinculo.getJuzgado().getId(),
+                vinculo.isEliminado());
     }
 
     private Usuario obtenerUsuarioActual() {

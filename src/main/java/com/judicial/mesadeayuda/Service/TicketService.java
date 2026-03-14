@@ -187,6 +187,7 @@ public class TicketService {
         ticket.setHardware(hardware);
         ticket.setReferenteNombre(dto.getReferenteNombre());
         ticket.setReferenteTelefono(dto.getReferenteTelefono());
+        ticket.setFechaActualizacion(LocalDateTime.now());
 
         ticket = ticketRepository.save(ticket);
         return TicketMapper.toDTO(ticket);

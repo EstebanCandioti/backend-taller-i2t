@@ -9,6 +9,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -64,11 +65,13 @@ public class AuditLogController {
      * Ej: GET /api/audit?desde=2026-01-01T00:00:00&hasta=2026-01-31T23:59:59
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AuditLogResponseDTO>>> listarPorFechas(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
+    public ResponseEntity<ApiResponse<List<AuditLogResponseDTO>>> listar(
+            @RequestParam(required = false) String entidad,
+            @RequestParam(required = false) AuditLog.Accion accion,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
 
-        List<AuditLogResponseDTO> logs = auditLogService.listarPorFechas(desde, hasta);
+        List<AuditLogResponseDTO> logs = auditLogService.listarConFiltrosOpcionales(entidad, accion, desde, hasta);
         return ResponseEntity.ok(ApiResponse.success("Registros de auditoría obtenidos", logs));
     }
 

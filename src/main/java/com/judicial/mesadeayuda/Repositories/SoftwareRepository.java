@@ -23,9 +23,10 @@ public interface SoftwareRepository extends JpaRepository<Software, Integer> {
      * Usado en GET /api/software?contratoId=1&juzgadoId=3&proveedor=Microsoft
      */
     @Query("""
-        SELECT s FROM Software s
+        SELECT DISTINCT s FROM Software s
+        LEFT JOIN s.juzgados j
         WHERE (:contratoId IS NULL OR s.contrato.id = :contratoId)
-          AND (:juzgadoId IS NULL OR s.juzgado.id = :juzgadoId)
+          AND (:juzgadoId IS NULL OR j.id = :juzgadoId)
           AND (:proveedor IS NULL OR LOWER(s.proveedor) LIKE LOWER(CONCAT('%', :proveedor, '%')))
         ORDER BY s.nombre ASC
     """)
@@ -48,12 +49,23 @@ public interface SoftwareRepository extends JpaRepository<Software, Integer> {
      * Lista software asignado a un juzgado específico.
      * Usado en GET /api/juzgados/{id}/software
      */
+    @Query("""
+        SELECT DISTINCT s FROM Software s
+        JOIN s.juzgados j
+        WHERE j.id = :juzgadoId
+        ORDER BY s.nombre ASC
+    """)
     List<Software> findByJuzgadoId(Integer juzgadoId);
 
     /**
      * Lista software instalado en un equipo específico.
      * Usado en el detalle de hardware.
      */
+    @Query("""
+        SELECT DISTINCT s FROM Software s
+        JOIN s.hardware h
+        WHERE h.id = :hardwareId
+    """)
     List<Software> findByHardwareId(Integer hardwareId);
 
     /**

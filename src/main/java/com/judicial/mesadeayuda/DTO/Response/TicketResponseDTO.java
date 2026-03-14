@@ -47,5 +47,6 @@ public class TicketResponseDTO {
     // Fechas
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaAsignacion;
+    private LocalDateTime fechaActualizacion;
     private LocalDateTime fechaCierre;
 }

@@ -1,6 +1,7 @@
 package com.judicial.mesadeayuda.DTO.Response;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,10 +28,8 @@ public class SoftwareResponseDTO {
     private String contratoNombre;
 
     // Juzgado asignado (puede ser null)
-    private Integer juzgadoId;
-    private String juzgadoNombre;
+    private List<JuzgadoResponseDTO> juzgados;
 
     // Hardware donde está instalado (puede ser null)
-    private Integer hardwareId;
-    private String hardwareNroInventario;
+    private List<HardwareResponseDTO> hardware;
 }

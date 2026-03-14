@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.judicial.mesadeayuda.DTO.Request.SoftwareHardwareRequestDTO;
+import com.judicial.mesadeayuda.DTO.Request.SoftwareJuzgadoRequestDTO;
 import com.judicial.mesadeayuda.DTO.Request.SoftwareRequestDTO;
 import com.judicial.mesadeayuda.DTO.Response.ApiResponse;
 import com.judicial.mesadeayuda.DTO.Response.SoftwareResponseDTO;
@@ -74,6 +76,22 @@ public class SoftwareController {
         SoftwareResponseDTO software = softwareService.editar(id, dto);
         return ResponseEntity.ok(ApiResponse.success("Software actualizado", software));
     }
+
+@PutMapping("/{id}/hardware")
+public ResponseEntity<ApiResponse<SoftwareResponseDTO>> actualizarHardware(
+        @PathVariable Integer id,
+        @RequestBody SoftwareHardwareRequestDTO dto) {
+    SoftwareResponseDTO response = softwareService.actualizarHardware(id, dto.getHardwareIds());
+    return ResponseEntity.ok(ApiResponse.success("Hardware actualizado correctamente", response));
+}
+
+@PutMapping("/{id}/juzgados")
+public ResponseEntity<ApiResponse<SoftwareResponseDTO>> actualizarJuzgados(
+        @PathVariable Integer id,
+        @RequestBody SoftwareJuzgadoRequestDTO dto) {
+    SoftwareResponseDTO response = softwareService.actualizarJuzgados(id, dto.getJuzgadoIds());
+    return ResponseEntity.ok(ApiResponse.success("Juzgados actualizados correctamente", response));
+}
 
     @PutMapping("/{id}/restore")
     public ResponseEntity<ApiResponse<SoftwareResponseDTO>> restaurar(@PathVariable Integer id) {

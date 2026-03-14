@@ -7,12 +7,17 @@ import com.judicial.mesadeayuda.Repositories.AuditLogRepository;
 import com.judicial.mesadeayuda.Repositories.UsuarioRepository;
 import com.judicial.mesadeayuda.Mapper.AuditLogMapper;
 import com.judicial.mesadeayuda.Security.CustomUserDetails;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -67,9 +72,7 @@ public class AuditLogService {
      */
     @Transactional(readOnly = true)
     public List<AuditLogResponseDTO> listarPorFechas(LocalDateTime desde, LocalDateTime hasta) {
-        return auditLogRepository.findByFechaBetweenOrderByFechaDesc(desde, hasta).stream()
-                .map(AuditLogMapper::toDTO)
-                .collect(Collectors.toList());
+        return listarConFiltros(null, null, desde, hasta);
     }
 
     /**
@@ -78,11 +81,21 @@ public class AuditLogService {
     @Transactional(readOnly = true)
     public List<AuditLogResponseDTO> listarConFiltros(String entidad, AuditLog.Accion accion,
                                                       LocalDateTime desde, LocalDateTime hasta) {
+        Specification<AuditLog> specification = crearSpecification(entidad, accion, desde, hasta);
+
         return auditLogRepository
-                .findByEntidadAndAccionAndFechaBetweenOrderByFechaDesc(entidad, accion, desde, hasta)
+                .findAll(specification, Sort.by(Sort.Direction.DESC, "fecha"))
                 .stream()
                 .map(AuditLogMapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuditLogResponseDTO> listarConFiltrosOpcionales(String entidad, AuditLog.Accion accion,
+                                                                LocalDate desde, LocalDate hasta) {
+        LocalDateTime fechaDesde = desde != null ? desde.atStartOfDay() : null;
+        LocalDateTime fechaHasta = hasta != null ? hasta.atTime(LocalTime.MAX) : null;
+        return listarConFiltros(entidad, accion, fechaDesde, fechaHasta);
     }
 
     // ── INSERCIÓN (llamada desde AuditAspect) ─────────────────
@@ -126,5 +139,28 @@ public class AuditLogService {
         }
         CustomUserDetails user = (CustomUserDetails) auth.getPrincipal();
         return usuarioRepository.findById(user.getId()).orElse(null);
+    }
+    private Specification<AuditLog> crearSpecification(String entidad, AuditLog.Accion accion,
+                                                        LocalDateTime desde, LocalDateTime hasta) {
+        List<Specification<AuditLog>> specs = new ArrayList<>();
+
+        if (entidad != null && !entidad.isBlank()) {
+            String entidadNormalizada = entidad.trim().toLowerCase();
+            specs.add((root, query, cb) -> cb.equal(cb.lower(root.get("entidad")), entidadNormalizada));
+        }
+
+        if (accion != null) {
+            specs.add((root, query, cb) -> cb.equal(root.get("accion"), accion));
+        }
+
+        if (desde != null) {
+            specs.add((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("fecha"), desde));
+        }
+
+        if (hasta != null) {
+            specs.add((root, query, cb) -> cb.lessThanOrEqualTo(root.get("fecha"), hasta));
+        }
+
+        return specs.stream().reduce(Specification.where(null), Specification::and);
     }
 }

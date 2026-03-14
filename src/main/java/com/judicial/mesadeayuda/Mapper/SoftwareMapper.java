@@ -1,5 +1,8 @@
 package com.judicial.mesadeayuda.Mapper;
 
+import java.util.Collections;
+import java.util.stream.Collectors;
+
 import com.judicial.mesadeayuda.DTO.Response.SoftwareResponseDTO;
 import com.judicial.mesadeayuda.Entities.Software;
 
@@ -17,15 +20,18 @@ public class SoftwareMapper {
                 .licenciasDisponibles(software.getLicenciasDisponibles())
                 .fechaVencimiento(software.getFechaVencimiento())
                 .observaciones(software.getObservaciones())
-                // Contrato
                 .contratoId(software.getContrato().getId())
                 .contratoNombre(software.getContrato().getNombre())
-                // Juzgado (puede ser null)
-                .juzgadoId(software.getJuzgado() != null ? software.getJuzgado().getId() : null)
-                .juzgadoNombre(software.getJuzgado() != null ? software.getJuzgado().getNombre() : null)
-                // Hardware (puede ser null)
-                .hardwareId(software.getHardware() != null ? software.getHardware().getId() : null)
-                .hardwareNroInventario(software.getHardware() != null ? software.getHardware().getNroInventario() : null)
+                .juzgados(software.getJuzgados() != null
+                        ? software.getJuzgados().stream()
+                                .map(JuzgadoMapper::toDTO)
+                                .collect(Collectors.toList())
+                        : Collections.emptyList())
+                .hardware(software.getHardware() != null
+                        ? software.getHardware().stream()
+                                .map(HardwareMapper::toDTO)
+                                .collect(Collectors.toList())
+                        : Collections.emptyList())
                 .build();
     }
 }

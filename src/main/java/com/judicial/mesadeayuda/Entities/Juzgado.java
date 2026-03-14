@@ -3,6 +3,7 @@ package com.judicial.mesadeayuda.Entities;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.hibernate.annotations.SQLJoinTableRestriction;
 import org.hibernate.annotations.SQLRestriction;
 
 import jakarta.persistence.Column;
@@ -12,6 +13,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -64,7 +66,8 @@ public class Juzgado {
      * Software asignado a este juzgado.
      * Relación inversa - el dueño es Software.
      */
-    @OneToMany(mappedBy = "juzgado", fetch = FetchType.LAZY)
+    @ManyToMany(mappedBy = "juzgados", fetch = FetchType.LAZY)
+    @SQLJoinTableRestriction("eliminado = 0")
     private List<Software> software;
 
     /**

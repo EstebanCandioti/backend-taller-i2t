@@ -123,6 +123,9 @@ public class Ticket {
     @Column(name = "fecha_asignacion")
     private LocalDateTime fechaAsignacion; // Se setea al asignar técnico
 
+    @Column(name = "fecha_actualizacion")
+    private LocalDateTime fechaActualizacion;
+
     @Column(name = "fecha_cierre")
     private LocalDateTime fechaCierre; // Se setea al cerrar el ticket
 

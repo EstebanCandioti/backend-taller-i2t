@@ -41,6 +41,7 @@ public class TicketMapper {
                 .resolucion(ticket.getResolucion())
                 .fechaCreacion(ticket.getFechaCreacion())
                 .fechaAsignacion(ticket.getFechaAsignacion())
+                .fechaActualizacion(ticket.getFechaActualizacion())
                 .fechaCierre(ticket.getFechaCierre())
                 .build();
     }

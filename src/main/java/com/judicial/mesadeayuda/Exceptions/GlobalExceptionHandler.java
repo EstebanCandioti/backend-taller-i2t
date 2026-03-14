@@ -13,8 +13,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.judicial.mesadeayuda.DTO.Response.ApiResponse;
 
@@ -154,6 +156,17 @@ public class GlobalExceptionHandler {
      * Captura: cualquier excepción no manejada anteriormente.
      * NUNCA expone detalles internos al cliente.
      */
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleRequestParameters(Exception ex) {
+        log.warn("ParÃ¡metros invÃ¡lidos en la request: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Los parÃ¡metros de la solicitud son invÃ¡lidos o incompletos"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
         log.error("Error interno no controlado: ", ex);

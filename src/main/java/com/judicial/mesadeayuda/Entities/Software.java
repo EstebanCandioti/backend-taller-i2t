@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.hibernate.annotations.SQLJoinTableRestriction;
 import org.hibernate.annotations.SQLRestriction;
 
 import jakarta.persistence.Column;
@@ -21,6 +22,7 @@ import lombok.Setter;
 import jakarta.persistence.Table;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 
@@ -28,8 +30,6 @@ import jakarta.persistence.ManyToOne;
 @Table(name = "software",
        indexes = {
            @Index(name = "idx_software_contrato", columnList = "contrato_id"),
-           @Index(name = "idx_software_juzgado", columnList = "juzgado_id"),
-           @Index(name = "idx_software_hardware", columnList = "hardware_id"),
            @Index(name = "idx_software_eliminado", columnList = "eliminado")
        })
 @SQLRestriction("eliminado = 0")
@@ -75,16 +75,26 @@ public class Software {
     /**
      * Juzgado al que está asignada la licencia. OPCIONAL.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "juzgado_id")
-    private Juzgado juzgado;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "software_juzgado",
+        joinColumns = @JoinColumn(name = "software_id"),
+        inverseJoinColumns = @JoinColumn(name = "juzgado_id")
+    )
+    @SQLJoinTableRestriction("eliminado = 0")
+    private List<Juzgado> juzgados;
 
     /**
      * Equipo específico en el que está instalado el software. OPCIONAL.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hardware_id")
-    private Hardware hardware;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "software_hardware",
+        joinColumns = @JoinColumn(name = "software_id"),
+        inverseJoinColumns = @JoinColumn(name = "hardware_id")
+    )
+    @SQLJoinTableRestriction("eliminado = 0")
+    private List<Hardware> hardware;
 
     @Column(name = "observaciones", columnDefinition = "TEXT")
     private String observaciones;

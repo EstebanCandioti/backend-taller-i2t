@@ -2,6 +2,7 @@ package com.judicial.mesadeayuda.Repositories;
 
 import com.judicial.mesadeayuda.Entities.AuditLog;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -15,7 +16,7 @@ import java.util.List;
  * Usado en GET /api/audit con los filtros definidos en el Mapa de Endpoints.
  */
 @Repository
-public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
+public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSpecificationExecutor<AuditLog> {
 
     /**
      * Historial completo de una entidad específica.

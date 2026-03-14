@@ -59,7 +59,11 @@ public interface JuzgadoRepository extends JpaRepository<Juzgado, Integer> {
     /**
      * Verifica si el juzgado tiene software activo asociado.
      */
-    @Query("SELECT COUNT(s) > 0 FROM Software s WHERE s.juzgado.id = :juzgadoId")
+    @Query("""
+        SELECT COUNT(DISTINCT s) > 0 FROM Software s
+        JOIN s.juzgados j
+        WHERE j.id = :juzgadoId
+    """)
     boolean tieneSoftwareActivo(Integer juzgadoId);
 
     /**

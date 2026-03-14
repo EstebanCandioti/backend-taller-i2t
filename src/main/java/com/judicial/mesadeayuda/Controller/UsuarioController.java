@@ -56,11 +56,6 @@ public class UsuarioController {
         return ResponseEntity.ok(ApiResponse.success("Usuarios obtenidos", usuarios));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UsuarioResponseDTO>> obtenerPorId(@PathVariable Integer id) {
-        UsuarioResponseDTO usuario = usuarioService.obtenerPorId(id);
-        return ResponseEntity.ok(ApiResponse.success("Usuario obtenido", usuario));
-    }
 
     /**
      * Lista técnicos activos para el selector de asignación de tickets.
@@ -79,6 +74,12 @@ public class UsuarioController {
             @RequestParam String q) {
         List<UsuarioResponseDTO> usuarios = usuarioService.buscar(q);
         return ResponseEntity.ok(ApiResponse.success("Resultados de búsqueda", usuarios));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UsuarioResponseDTO>> obtenerPorId(@PathVariable Integer id) {
+        UsuarioResponseDTO usuario = usuarioService.obtenerPorId(id);
+        return ResponseEntity.ok(ApiResponse.success("Usuario obtenido", usuario));
     }
 
     @PostMapping

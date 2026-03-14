@@ -94,8 +94,6 @@ public class Hardware {
      * Software instalado en este equipo.
      * Relación inversa - el dueño es Software.
      */
-    @OneToMany(mappedBy = "hardware", fetch = FetchType.LAZY)
-    private List<Software> softwareInstalado;
 
     /**
      * Tickets asociados a este equipo.

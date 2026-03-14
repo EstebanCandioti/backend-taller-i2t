@@ -1,6 +1,7 @@
 package com.judicial.mesadeayuda.DTO.Request;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -30,15 +31,12 @@ public class SoftwareRequestDTO {
     @NotNull(message = "El contrato es obligatorio")
     private Integer contratoId;
 
-    /**
-     * OPCIONAL. Juzgado al que se asigna la licencia.
-     */
-    private Integer juzgadoId;
+    private List<Integer> juzgadoIds;
 
     /**
      * OPCIONAL. Equipo en el que se instala el software.
      */
-    private Integer hardwareId;
+    private List<Integer> hardwareIds;
 
     private String observaciones;
 }
