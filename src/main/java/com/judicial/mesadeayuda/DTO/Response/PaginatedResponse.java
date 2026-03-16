@@ -42,6 +42,8 @@ public class PaginatedResponse<T> {
     private int totalPages;
     private int currentPage;
     private int pageSize;
+    private boolean first;
+    private boolean last;
 
     /**
      * Factory method que convierte un Page<T> de Spring Data
@@ -54,6 +56,8 @@ public class PaginatedResponse<T> {
                 .totalPages(page.getTotalPages())
                 .currentPage(page.getNumber())
                 .pageSize(page.getSize())
+                .first(page.isFirst())
+                .last(page.isLast())
                 .build();
     }
 }

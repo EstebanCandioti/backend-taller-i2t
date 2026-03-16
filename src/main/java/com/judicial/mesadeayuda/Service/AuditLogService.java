@@ -1,13 +1,15 @@
 package com.judicial.mesadeayuda.Service;
 
 import com.judicial.mesadeayuda.DTO.Response.AuditLogResponseDTO;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.Entities.AuditLog;
 import com.judicial.mesadeayuda.Entities.Usuario;
 import com.judicial.mesadeayuda.Repositories.AuditLogRepository;
 import com.judicial.mesadeayuda.Repositories.UsuarioRepository;
 import com.judicial.mesadeayuda.Mapper.AuditLogMapper;
 import com.judicial.mesadeayuda.Security.CustomUserDetails;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -68,34 +70,24 @@ public class AuditLogService {
     }
 
     /**
-     * Filtro general con rango de fechas.
+     * Filtro completo: entidad + acción + rango de fechas con paginación.
      */
     @Transactional(readOnly = true)
-    public List<AuditLogResponseDTO> listarPorFechas(LocalDateTime desde, LocalDateTime hasta) {
-        return listarConFiltros(null, null, desde, hasta);
-    }
-
-    /**
-     * Filtro completo: entidad + acción + rango de fechas.
-     */
-    @Transactional(readOnly = true)
-    public List<AuditLogResponseDTO> listarConFiltros(String entidad, AuditLog.Accion accion,
-                                                      LocalDateTime desde, LocalDateTime hasta) {
+    public PaginatedResponse<AuditLogResponseDTO> listarConFiltros(String entidad, AuditLog.Accion accion,
+                                                                    LocalDateTime desde, LocalDateTime hasta,
+                                                                    Pageable pageable) {
         Specification<AuditLog> specification = crearSpecification(entidad, accion, desde, hasta);
-
-        return auditLogRepository
-                .findAll(specification, Sort.by(Sort.Direction.DESC, "fecha"))
-                .stream()
-                .map(AuditLogMapper::toDTO)
-                .collect(Collectors.toList());
+        Page<AuditLog> page = auditLogRepository.findAll(specification, pageable);
+        return PaginatedResponse.from(page.map(AuditLogMapper::toDTO));
     }
 
     @Transactional(readOnly = true)
-    public List<AuditLogResponseDTO> listarConFiltrosOpcionales(String entidad, AuditLog.Accion accion,
-                                                                LocalDate desde, LocalDate hasta) {
+    public PaginatedResponse<AuditLogResponseDTO> listarConFiltrosOpcionales(String entidad, AuditLog.Accion accion,
+                                                                              LocalDate desde, LocalDate hasta,
+                                                                              Pageable pageable) {
         LocalDateTime fechaDesde = desde != null ? desde.atStartOfDay() : null;
         LocalDateTime fechaHasta = hasta != null ? hasta.atTime(LocalTime.MAX) : null;
-        return listarConFiltros(entidad, accion, fechaDesde, fechaHasta);
+        return listarConFiltros(entidad, accion, fechaDesde, fechaHasta, pageable);
     }
 
     // ── INSERCIÓN (llamada desde AuditAspect) ─────────────────

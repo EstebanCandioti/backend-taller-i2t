@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.judicial.mesadeayuda.Audit.Auditable;
 import com.judicial.mesadeayuda.DTO.Request.HardwareRequestDTO;
 import com.judicial.mesadeayuda.DTO.Response.HardwareResponseDTO;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.DTO.Response.TicketResponseDTO;
 import com.judicial.mesadeayuda.Entities.AuditLog;
 import com.judicial.mesadeayuda.Entities.Contrato;
@@ -66,10 +69,10 @@ public class HardwareService {
     }
 
     @Transactional(readOnly = true)
-    public List<HardwareResponseDTO> listar(Integer juzgadoId, String clase, String modelo, String ubicacion) {
-        return hardwareRepository.findConFiltros(juzgadoId, clase, modelo, ubicacion).stream()
-                .map(HardwareMapper::toDTO)
-                .collect(Collectors.toList());
+    public PaginatedResponse<HardwareResponseDTO> listar(Integer juzgadoId, String clase, String modelo,
+                                                          String ubicacion, String q, Pageable pageable) {
+        Page<Hardware> page = hardwareRepository.findConFiltros(juzgadoId, clase, modelo, ubicacion, q, pageable);
+        return PaginatedResponse.from(page.map(HardwareMapper::toDTO));
     }
 
     @Transactional(readOnly = true)

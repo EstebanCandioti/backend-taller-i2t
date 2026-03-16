@@ -3,6 +3,8 @@ package com.judicial.mesadeayuda.Repositories;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -33,21 +35,14 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
                   AND (:tecnicoId IS NULL OR t.tecnico.id = :tecnicoId)
                   AND (:q IS NULL OR LOWER(t.titulo) LIKE LOWER(CONCAT('%', :q, '%'))
                                   OR LOWER(t.descripcion) LIKE LOWER(CONCAT('%', :q, '%')))
-                ORDER BY
-                    CASE t.prioridad
-                        WHEN 'CRITICA' THEN 1
-                        WHEN 'ALTA' THEN 2
-                        WHEN 'MEDIA' THEN 3
-                        WHEN 'BAJA' THEN 4
-                    END ASC,
-                    t.fechaCreacion DESC
             """)
-    List<Ticket> findConFiltros(
+    Page<Ticket> findConFiltros(
             Ticket.Estado estado,
             Ticket.Prioridad prioridad,
             Integer juzgadoId,
             Integer tecnicoId,
-            String q);
+            String q,
+            Pageable pageable);
 
     /**
      * Tickets asignados a un técnico específico (vista del Técnico).
@@ -73,6 +68,11 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
      * Usado para el historial completo del técnico.
      */
     List<Ticket> findByTecnicoId(Integer tecnicoId);
+
+    /**
+     * Tickets de un técnico con paginación.
+     */
+    Page<Ticket> findByTecnicoId(Integer tecnicoId, Pageable pageable);
 
     /**
      * Tickets de un juzgado específico.
@@ -122,6 +122,19 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
      */
     @Query("SELECT t.prioridad, COUNT(t) FROM Ticket t GROUP BY t.prioridad")
     List<Object[]> countByPrioridad();
+
+    @Query("""
+                SELECT COUNT(t) FROM Ticket t
+                WHERE t.tecnico IS NULL
+                  AND t.estado <> 'CERRADO'
+            """)
+    long countSinAsignar();
+
+    @Query("""
+                SELECT COUNT(t) FROM Ticket t
+                WHERE t.estado <> 'CERRADO'
+            """)
+    long countActivos();
 
     /**
      * Busca un ticket eliminado por ID (bypasea @SQLRestriction).

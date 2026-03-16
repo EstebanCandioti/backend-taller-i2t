@@ -1,6 +1,8 @@
 package com.judicial.mesadeayuda.Repositories;
 
 import com.judicial.mesadeayuda.Entities.Software;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -28,9 +30,8 @@ public interface SoftwareRepository extends JpaRepository<Software, Integer> {
         WHERE (:contratoId IS NULL OR s.contrato.id = :contratoId)
           AND (:juzgadoId IS NULL OR j.id = :juzgadoId)
           AND (:proveedor IS NULL OR LOWER(s.proveedor) LIKE LOWER(CONCAT('%', :proveedor, '%')))
-        ORDER BY s.nombre ASC
     """)
-    List<Software> findConFiltros(Integer contratoId, Integer juzgadoId, String proveedor);
+    Page<Software> findConFiltros(Integer contratoId, Integer juzgadoId, String proveedor, Pageable pageable);
 
     /**
      * Licencias próximas a vencer en los próximos X días.
@@ -80,6 +81,21 @@ public interface SoftwareRepository extends JpaRepository<Software, Integer> {
      */
     @Query("SELECT COUNT(s) > 0 FROM Software s WHERE s.contrato.id = :contratoId")
     boolean existsByContratoId(Integer contratoId);
+
+    @Query("""
+        SELECT COUNT(s) FROM Software s
+        WHERE s.fechaVencimiento IS NOT NULL
+          AND s.fechaVencimiento < :hoy
+    """)
+    long countLicenciasVencidas(LocalDate hoy);
+
+    @Query("""
+        SELECT COUNT(s) FROM Software s
+        WHERE s.fechaVencimiento IS NOT NULL
+          AND s.fechaVencimiento >= :hoy
+          AND s.fechaVencimiento <= :fechaLimite
+    """)
+    long countLicenciasProximasAVencer(LocalDate hoy, LocalDate fechaLimite);
 
     @Query(value = "SELECT * FROM software WHERE id = :id AND eliminado = 1", nativeQuery = true)
     Optional<Software> findEliminadoById(Integer id);

@@ -2,8 +2,9 @@ package com.judicial.mesadeayuda.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import com.judicial.mesadeayuda.Audit.Auditable;
 import com.judicial.mesadeayuda.DTO.Request.TicketAsignarRequestDTO;
 import com.judicial.mesadeayuda.DTO.Request.TicketCerrarRequestDTO;
 import com.judicial.mesadeayuda.DTO.Request.TicketRequestDTO;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.DTO.Response.TicketResponseDTO;
 import com.judicial.mesadeayuda.Entities.AuditLog;
 import com.judicial.mesadeayuda.Entities.Hardware;
@@ -49,17 +51,20 @@ public class TicketService {
     private final HardwareRepository hardwareRepository;
     private final UsuarioRepository usuarioRepository;
     private final EmailService emailService;
+    private final NotificationWebSocketService notificationWsService;
 
     public TicketService(TicketRepository ticketRepository,
                          JuzgadoRepository juzgadoRepository,
                          HardwareRepository hardwareRepository,
                          UsuarioRepository usuarioRepository,
-                         EmailService emailService) {
+                         EmailService emailService,
+                         NotificationWebSocketService notificationWsService) {
         this.ticketRepository = ticketRepository;
         this.juzgadoRepository = juzgadoRepository;
         this.hardwareRepository = hardwareRepository;
         this.usuarioRepository = usuarioRepository;
         this.emailService = emailService;
+        this.notificationWsService = notificationWsService;
     }
 
     // ── LISTAR (con filtros y restricción por rol) ────────────
@@ -70,24 +75,21 @@ public class TicketService {
      * - Técnico: solo ve sus tickets asignados.
      */
     @Transactional(readOnly = true)
-    public List<TicketResponseDTO> listar(Ticket.Estado estado, Ticket.Prioridad prioridad,
-                                          Integer juzgadoId, Integer tecnicoId, String q) {
+    public PaginatedResponse<TicketResponseDTO> listar(Ticket.Estado estado, Ticket.Prioridad prioridad,
+                                                        Integer juzgadoId, Integer tecnicoId,
+                                                        String q, Pageable pageable) {
         CustomUserDetails user = getUsuarioAutenticado();
         String rol = getRolUsuario(user);
 
-        List<Ticket> tickets;
+        Page<Ticket> page;
 
         if ("Técnico".equals(rol)) {
-            // Técnico solo ve sus tickets
-            tickets = ticketRepository.findByTecnicoId(user.getId());
+            page = ticketRepository.findByTecnicoId(user.getId(), pageable);
         } else {
-            // Admin/Operario ven todos con filtros
-            tickets = ticketRepository.findConFiltros(estado, prioridad, juzgadoId, tecnicoId, q);
+            page = ticketRepository.findConFiltros(estado, prioridad, juzgadoId, tecnicoId, q, pageable);
         }
 
-        return tickets.stream()
-                .map(TicketMapper::toDTO)
-                .collect(Collectors.toList());
+        return PaginatedResponse.from(page.map(TicketMapper::toDTO));
     }
 
     /**
@@ -224,6 +226,23 @@ public class TicketService {
         // Enviar email al técnico (asíncrono, no bloquea)
         emailService.enviarNotificacionAsignacion(ticket);
 
+        notificationWsService.notificarUsuario(
+                tecnico.getEmail(),
+                "TICKET_ASIGNADO",
+                "Ticket",
+                ticket.getId(),
+                "Se te asignó el ticket: " + ticket.getTitulo()
+        );
+
+        notificationWsService.notificarPorRol(
+                List.of("Admin", "Operario"),
+                "TICKET_ASIGNADO",
+                "Ticket",
+                ticket.getId(),
+                "Ticket asignado a " + tecnico.getNombre() + " " + tecnico.getApellido()
+                        + ": " + ticket.getTitulo()
+        );
+
         return TicketMapper.toDTO(ticket);
     }
 
@@ -278,6 +297,23 @@ public class TicketService {
         // Enviar email al nuevo técnico
         emailService.enviarNotificacionAsignacion(ticket);
 
+        notificationWsService.notificarUsuario(
+                nuevoTecnico.getEmail(),
+                "TICKET_ASIGNADO",
+                "Ticket",
+                ticket.getId(),
+                "Se te asignó el ticket: " + ticket.getTitulo()
+        );
+
+        notificationWsService.notificarPorRol(
+                List.of("Admin", "Operario"),
+                "TICKET_ASIGNADO",
+                "Ticket",
+                ticket.getId(),
+                "Ticket reasignado a " + nuevoTecnico.getNombre() + " " + nuevoTecnico.getApellido()
+                        + ": " + ticket.getTitulo()
+        );
+
         return TicketMapper.toDTO(ticket);
     }
 
@@ -299,6 +335,15 @@ public class TicketService {
 
         ticket.setEstado(Ticket.Estado.EN_CURSO);
         ticket = ticketRepository.save(ticket);
+
+        notificationWsService.notificarPorRol(
+                List.of("Admin", "Operario"),
+                "TICKET_EN_CURSO",
+                "Ticket",
+                ticket.getId(),
+                "Ticket pasó a EN_CURSO: " + ticket.getTitulo()
+        );
+
         return TicketMapper.toDTO(ticket);
     }
 
@@ -323,6 +368,15 @@ public class TicketService {
         ticket.setFechaCierre(LocalDateTime.now());
 
         ticket = ticketRepository.save(ticket);
+
+        notificationWsService.notificarPorRol(
+                List.of("Admin", "Operario"),
+                "TICKET_CERRADO",
+                "Ticket",
+                ticket.getId(),
+                "Ticket cerrado: " + ticket.getTitulo()
+        );
+
         return TicketMapper.toDTO(ticket);
     }
 
@@ -429,3 +483,4 @@ public class TicketService {
                 .orElseThrow(() -> new NotFoundException("Usuario", user.getId()));
     }
 }
+

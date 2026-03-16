@@ -3,6 +3,8 @@ package com.judicial.mesadeayuda.Repositories;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -41,9 +43,15 @@ public interface HardwareRepository extends JpaRepository<Hardware, Integer> {
                   AND (:clase IS NULL OR LOWER(h.clase) LIKE LOWER(CONCAT('%', :clase, '%')))
                   AND (:modelo IS NULL OR LOWER(h.modelo) LIKE LOWER(CONCAT('%', :modelo, '%')))
                   AND (:ubicacion IS NULL OR LOWER(h.ubicacionFisica) LIKE LOWER(CONCAT('%', :ubicacion, '%')))
-                ORDER BY h.fechaAlta DESC
+                  AND (:q IS NULL
+                       OR LOWER(h.nroInventario) LIKE LOWER(CONCAT('%', :q, '%'))
+                       OR LOWER(h.marca) LIKE LOWER(CONCAT('%', :q, '%'))
+                       OR LOWER(h.modelo) LIKE LOWER(CONCAT('%', :q, '%'))
+                       OR LOWER(h.clase) LIKE LOWER(CONCAT('%', :q, '%'))
+                       OR LOWER(h.nroSerie) LIKE LOWER(CONCAT('%', :q, '%'))
+                       OR LOWER(h.ubicacionFisica) LIKE LOWER(CONCAT('%', :q, '%')))
             """)
-    List<Hardware> findConFiltros(Integer juzgadoId, String clase, String modelo, String ubicacion);
+    Page<Hardware> findConFiltros(Integer juzgadoId, String clase, String modelo, String ubicacion, String q, Pageable pageable);
 
     /**
      * Lista todo el hardware asignado a un juzgado.

@@ -13,6 +13,7 @@ import com.judicial.mesadeayuda.Entities.Usuario;
 import com.judicial.mesadeayuda.Repositories.SoftwareRepository;
 import com.judicial.mesadeayuda.Repositories.UsuarioRepository;
 import com.judicial.mesadeayuda.Service.EmailService;
+import com.judicial.mesadeayuda.Service.NotificationWebSocketService;
 
 /**
  * Job programado que se ejecuta diariamente a las 08:15hs.
@@ -42,13 +43,16 @@ public class SoftwareVencimientoJob {
     private final SoftwareRepository softwareRepository;
     private final UsuarioRepository usuarioRepository;
     private final EmailService emailService;
+    private final NotificationWebSocketService notificationWsService;
 
     public SoftwareVencimientoJob(SoftwareRepository softwareRepository,
                                   UsuarioRepository usuarioRepository,
-                                  EmailService emailService) {
+                                  EmailService emailService,
+                                  NotificationWebSocketService notificationWsService) {
         this.softwareRepository = softwareRepository;
         this.usuarioRepository = usuarioRepository;
         this.emailService = emailService;
+        this.notificationWsService = notificationWsService;
     }
 
     /**
@@ -109,6 +113,17 @@ public class SoftwareVencimientoJob {
         }
 
         log.info("Alertas de licencias próximas a vencer: {} enviados, {} fallidos", enviados, fallidos);
+
+        for (Software software : proximasAVencer) {
+            long diasRestantes = software.getFechaVencimiento().toEpochDay() - hoy.toEpochDay();
+            notificationWsService.notificarPorRol(
+                    List.of("Admin", "Operario"),
+                    "LICENCIA_POR_VENCER",
+                    "Software",
+                    software.getId(),
+                    "La licencia '" + software.getNombre() + "' vence en " + diasRestantes + " dias"
+            );
+        }
     }
 
     /**
@@ -155,3 +170,5 @@ public class SoftwareVencimientoJob {
                 .toList();
     }
 }
+
+

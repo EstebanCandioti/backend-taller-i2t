@@ -1,6 +1,8 @@
 package com.judicial.mesadeayuda.Controller;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,6 +11,7 @@ import com.judicial.mesadeayuda.DTO.Request.SoftwareHardwareRequestDTO;
 import com.judicial.mesadeayuda.DTO.Request.SoftwareJuzgadoRequestDTO;
 import com.judicial.mesadeayuda.DTO.Request.SoftwareRequestDTO;
 import com.judicial.mesadeayuda.DTO.Response.ApiResponse;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.DTO.Response.SoftwareResponseDTO;
 import com.judicial.mesadeayuda.Service.SoftwareService;
 
@@ -38,12 +41,20 @@ public class SoftwareController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SoftwareResponseDTO>>> listar(
+    public ResponseEntity<ApiResponse<PaginatedResponse<SoftwareResponseDTO>>> listar(
             @RequestParam(required = false) Integer contratoId,
             @RequestParam(required = false) Integer juzgadoId,
-            @RequestParam(required = false) String proveedor) {
+            @RequestParam(required = false) String proveedor,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "nombre,asc") String sort) {
 
-        List<SoftwareResponseDTO> software = softwareService.listar(contratoId, juzgadoId, proveedor);
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("asc")
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        PaginatedResponse<SoftwareResponseDTO> software = softwareService.listar(contratoId, juzgadoId, proveedor, pageable);
         return ResponseEntity.ok(ApiResponse.success("Software obtenido", software));
     }
 

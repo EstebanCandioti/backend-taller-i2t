@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.judicial.mesadeayuda.Entities.Rol;
@@ -45,6 +46,25 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     @Query("SELECT u FROM Usuario u WHERE u.rol.nombre = 'Técnico' AND u.activo = true")
     List<Usuario> findTecnicosActivos();
 
+    @Query(value = """
+        SELECT u.id AS tecnicoId,
+               CONCAT(u.nombre, ' ', u.apellido) AS nombreCompleto,
+               COALESCE(SUM(CASE WHEN t.estado = 'ASIGNADO' THEN 1 ELSE 0 END), 0) AS asignados,
+               COALESCE(SUM(CASE WHEN t.estado = 'EN_CURSO' THEN 1 ELSE 0 END), 0) AS enCurso,
+               COALESCE(SUM(CASE WHEN t.estado IN ('ASIGNADO', 'EN_CURSO') THEN 1 ELSE 0 END), 0) AS totalActivos
+        FROM usuarios u
+        JOIN roles r ON r.id = u.rol_id
+        LEFT JOIN tickets t
+          ON t.tecnico_id = u.id
+         AND t.eliminado = 0
+        WHERE u.eliminado = 0
+          AND u.activo = 1
+          AND LOWER(r.nombre) = 'tecnico'
+        GROUP BY u.id, u.nombre, u.apellido
+        ORDER BY totalActivos DESC, nombreCompleto ASC
+    """, nativeQuery = true)
+    List<Object[]> findTecnicosCargaDashboard();
+
     /**
      * Lista usuarios filtrando por rol y estado activo.
      * Usado en el endpoint GET /api/usuarios con filtros.
@@ -69,4 +89,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     @Modifying
     @Query(value = "UPDATE usuarios SET eliminado = 0, activo = 1, fecha_eliminacion = NULL, eliminado_por_id = NULL WHERE id = :id AND eliminado = 1", nativeQuery = true)
     int restore(Integer id);
+
+    @Query("""
+            SELECT u.email FROM Usuario u
+            WHERE u.rol.nombre IN :roles
+              AND u.activo = true
+              AND u.eliminado = false
+            """)
+    List<String> findEmailsByRolesAndActivoTrue(@Param("roles") List<String> roles);
 }

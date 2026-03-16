@@ -8,12 +8,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.judicial.mesadeayuda.Audit.Auditable;
 import com.judicial.mesadeayuda.DTO.Request.SoftwareRequestDTO;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.DTO.Response.SoftwareResponseDTO;
 import com.judicial.mesadeayuda.Entities.AuditLog;
 import com.judicial.mesadeayuda.Entities.Contrato;
@@ -72,10 +75,10 @@ public class SoftwareService {
     }
 
     @Transactional(readOnly = true)
-    public List<SoftwareResponseDTO> listar(Integer contratoId, Integer juzgadoId, String proveedor) {
-        return softwareRepository.findConFiltros(contratoId, juzgadoId, proveedor).stream()
-                .map(SoftwareMapper::toDTO)
-                .collect(Collectors.toList());
+    public PaginatedResponse<SoftwareResponseDTO> listar(Integer contratoId, Integer juzgadoId,
+                                                          String proveedor, Pageable pageable) {
+        Page<Software> page = softwareRepository.findConFiltros(contratoId, juzgadoId, proveedor, pageable);
+        return PaginatedResponse.from(page.map(SoftwareMapper::toDTO));
     }
 
     @Transactional(readOnly = true)

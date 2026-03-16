@@ -13,6 +13,7 @@ import com.judicial.mesadeayuda.Entities.Usuario;
 import com.judicial.mesadeayuda.Repositories.ContratoRepository;
 import com.judicial.mesadeayuda.Repositories.UsuarioRepository;
 import com.judicial.mesadeayuda.Service.EmailService;
+import com.judicial.mesadeayuda.Service.NotificationWebSocketService;
 
 /**
  * Job programado que se ejecuta diariamente a las 08:00hs.
@@ -43,13 +44,16 @@ public class ContratoVencimientoJob {
     private final ContratoRepository contratoRepository;
     private final UsuarioRepository usuarioRepository;
     private final EmailService emailService;
+    private final NotificationWebSocketService notificationWsService;
 
     public ContratoVencimientoJob(ContratoRepository contratoRepository,
                                   UsuarioRepository usuarioRepository,
-                                  EmailService emailService) {
+                                  EmailService emailService,
+                                  NotificationWebSocketService notificationWsService) {
         this.contratoRepository = contratoRepository;
         this.usuarioRepository = usuarioRepository;
         this.emailService = emailService;
+        this.notificationWsService = notificationWsService;
     }
 
     /**
@@ -95,6 +99,17 @@ public class ContratoVencimientoJob {
 
         log.info("Se encontraron {} contrato(s) próximo(s) a vencer", contratosProximos.size());
         enviarAlertas(contratosProximos, destinatarios, "próximos a vencer");
+
+        for (Contrato contrato : contratosProximos) {
+            long diasRestantes = contrato.getFechaFin().toEpochDay() - hoy.toEpochDay();
+            notificationWsService.notificarPorRol(
+                    List.of("Admin", "Operario"),
+                    "CONTRATO_POR_VENCER",
+                    "Contrato",
+                    contrato.getId(),
+                    "El contrato '" + contrato.getNombre() + "' vence en " + diasRestantes + " dias"
+            );
+        }
     }
 
     /**
@@ -173,3 +188,5 @@ public class ContratoVencimientoJob {
                 .toList();
     }
 }
+
+

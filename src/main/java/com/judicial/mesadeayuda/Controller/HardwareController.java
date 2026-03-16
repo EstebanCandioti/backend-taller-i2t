@@ -2,6 +2,8 @@ package com.judicial.mesadeayuda.Controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.judicial.mesadeayuda.DTO.Request.HardwareRequestDTO;
 import com.judicial.mesadeayuda.DTO.Response.ApiResponse;
 import com.judicial.mesadeayuda.DTO.Response.HardwareResponseDTO;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.DTO.Response.TicketResponseDTO;
 import com.judicial.mesadeayuda.Service.HardwareService;
 
@@ -45,13 +48,22 @@ public class HardwareController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<HardwareResponseDTO>>> listar(
+    public ResponseEntity<ApiResponse<PaginatedResponse<HardwareResponseDTO>>> listar(
             @RequestParam(required = false) Integer juzgadoId,
             @RequestParam(required = false) String clase,
             @RequestParam(required = false) String modelo,
-            @RequestParam(required = false) String ubicacion) {
+            @RequestParam(required = false) String ubicacion,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "fechaAlta,desc") String sort) {
 
-        List<HardwareResponseDTO> hardware = hardwareService.listar(juzgadoId, clase, modelo, ubicacion);
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("asc")
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        PaginatedResponse<HardwareResponseDTO> hardware = hardwareService.listar(juzgadoId, clase, modelo, ubicacion, q, pageable);
         return ResponseEntity.ok(ApiResponse.success("Hardware obtenido", hardware));
     }
 

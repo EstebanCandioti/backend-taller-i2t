@@ -83,6 +83,7 @@ public class SecurityConfig {
 
                 // ── Públicos (sin token) ──────────────────────────────
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/ws/**").permitAll()
 
                 // ── Tickets ───────────────────────────────────────────
                 // GET: todos los roles autenticados (filtro por rol en Service)
@@ -103,6 +104,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/software/**").hasAnyRole("Admin", "Operario")
                 .requestMatchers(HttpMethod.PUT, "/api/software/**").hasAnyRole("Admin", "Operario")
                 .requestMatchers(HttpMethod.DELETE, "/api/software/**").hasAnyRole("Admin", "Operario")
+                .requestMatchers(HttpMethod.GET, "/api/dashboard/**").hasAnyRole("Admin", "Operario")
 
                 // ── Contratos ─────────────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/api/contratos/**").hasAnyRole("Admin", "Operario")
@@ -170,7 +172,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:4200")); // Angular dev server
+        config.setAllowedOrigins(List.of(
+                "http://localhost:4200",  // Angular dev server
+                "http://localhost:3000"   // Docker (Nginx)
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

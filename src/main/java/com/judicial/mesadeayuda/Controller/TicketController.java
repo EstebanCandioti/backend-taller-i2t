@@ -2,6 +2,8 @@ package com.judicial.mesadeayuda.Controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,6 +20,7 @@ import com.judicial.mesadeayuda.DTO.Request.TicketAsignarRequestDTO;
 import com.judicial.mesadeayuda.DTO.Request.TicketCerrarRequestDTO;
 import com.judicial.mesadeayuda.DTO.Request.TicketRequestDTO;
 import com.judicial.mesadeayuda.DTO.Response.ApiResponse;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.DTO.Response.TicketResponseDTO;
 import com.judicial.mesadeayuda.Entities.Ticket;
 import com.judicial.mesadeayuda.Service.TicketService;
@@ -53,14 +56,22 @@ public class TicketController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<TicketResponseDTO>>> listar(
+    public ResponseEntity<ApiResponse<PaginatedResponse<TicketResponseDTO>>> listar(
             @RequestParam(required = false) Ticket.Estado estado,
             @RequestParam(required = false) Ticket.Prioridad prioridad,
             @RequestParam(required = false) Integer juzgadoId,
             @RequestParam(required = false) Integer tecnicoId,
-            @RequestParam(required = false) String q) {
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "fechaCreacion,desc") String sort) {
 
-        List<TicketResponseDTO> tickets = ticketService.listar(estado, prioridad, juzgadoId, tecnicoId, q);
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("asc")
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        PaginatedResponse<TicketResponseDTO> tickets = ticketService.listar(estado, prioridad, juzgadoId, tecnicoId, q, pageable);
         return ResponseEntity.ok(ApiResponse.success("Tickets obtenidos", tickets));
     }
 

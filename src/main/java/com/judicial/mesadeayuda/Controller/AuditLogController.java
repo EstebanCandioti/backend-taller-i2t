@@ -2,9 +2,12 @@ package com.judicial.mesadeayuda.Controller;
 
 import com.judicial.mesadeayuda.DTO.Response.ApiResponse;
 import com.judicial.mesadeayuda.DTO.Response.AuditLogResponseDTO;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.Entities.AuditLog;
 import com.judicial.mesadeayuda.Service.AuditLogService;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -61,32 +64,48 @@ public class AuditLogController {
     }
 
     /**
-     * Filtro por rango de fechas.
-     * Ej: GET /api/audit?desde=2026-01-01T00:00:00&hasta=2026-01-31T23:59:59
+     * Filtro por rango de fechas con paginación.
+     * Ej: GET /api/audit?desde=2026-01-01&hasta=2026-01-31&page=0&size=50
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AuditLogResponseDTO>>> listar(
+    public ResponseEntity<ApiResponse<PaginatedResponse<AuditLogResponseDTO>>> listar(
             @RequestParam(required = false) String entidad,
             @RequestParam(required = false) AuditLog.Accion accion,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(defaultValue = "fecha,desc") String sort) {
 
-        List<AuditLogResponseDTO> logs = auditLogService.listarConFiltrosOpcionales(entidad, accion, desde, hasta);
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("asc")
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        PaginatedResponse<AuditLogResponseDTO> logs = auditLogService.listarConFiltrosOpcionales(entidad, accion, desde, hasta, pageable);
         return ResponseEntity.ok(ApiResponse.success("Registros de auditoría obtenidos", logs));
     }
 
     /**
-     * Filtro completo: entidad + acción + rango de fechas.
-     * Ej: GET /api/audit/filtro?entidad=Ticket&accion=CREATE&desde=...&hasta=...
+     * Filtro completo: entidad + acción + rango de fechas con paginación.
+     * Ej: GET /api/audit/filtro?entidad=Ticket&accion=CREATE&desde=...&hasta=...&page=0&size=50
      */
     @GetMapping("/filtro")
-    public ResponseEntity<ApiResponse<List<AuditLogResponseDTO>>> listarConFiltros(
+    public ResponseEntity<ApiResponse<PaginatedResponse<AuditLogResponseDTO>>> listarConFiltros(
             @RequestParam String entidad,
             @RequestParam AuditLog.Accion accion,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(defaultValue = "fecha,desc") String sort) {
 
-        List<AuditLogResponseDTO> logs = auditLogService.listarConFiltros(entidad, accion, desde, hasta);
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("asc")
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        PaginatedResponse<AuditLogResponseDTO> logs = auditLogService.listarConFiltros(entidad, accion, desde, hasta, pageable);
         return ResponseEntity.ok(ApiResponse.success("Registros de auditoría filtrados", logs));
     }
 }

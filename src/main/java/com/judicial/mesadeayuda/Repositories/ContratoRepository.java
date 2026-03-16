@@ -71,6 +71,19 @@ public interface ContratoRepository extends JpaRepository<Contrato, Integer> {
     @Query("SELECT COUNT(s) > 0 FROM Software s WHERE s.contrato.id = :contratoId")
     boolean tieneSoftwareActivo(Integer contratoId);
 
+    @Query("""
+        SELECT COUNT(c) FROM Contrato c
+        WHERE c.fechaFin < :hoy
+    """)
+    long countVencidos(LocalDate hoy);
+
+    @Query("""
+        SELECT COUNT(c) FROM Contrato c
+        WHERE c.fechaFin >= :hoy
+          AND DATEDIFF(c.fechaFin, :hoy) <= c.diasAlertaVencimiento
+    """)
+    long countProximosAVencer(LocalDate hoy);
+
     @Query(value = "SELECT * FROM contratos WHERE id = :id AND eliminado = 1", nativeQuery = true)
     Optional<Contrato> findEliminadoById(Integer id);
 }
