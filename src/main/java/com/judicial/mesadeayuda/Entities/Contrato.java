@@ -73,6 +73,13 @@ public class Contrato {
     private String observaciones;
 
     /**
+     * ID del contrato nuevo generado por renovación.
+     * Si no es null, este contrato ya fue renovado y no puede renovarse otra vez.
+     */
+    @Column(name = "renovado_a_id")
+    private Integer renovadoAId;
+
+    /**
      * Hardware asociado a este contrato (many-to-many).
      * Un contrato puede cubrir múltiples equipos.
      */

@@ -25,6 +25,9 @@ public class ContratoResponseDTO {
     private Integer diasAlertaVencimiento;
     private String observaciones;
 
+    // Renovacion
+    private Integer renovadoAId;
+
     // Estado calculado
     private boolean vencido;
     private boolean proximoAVencer;

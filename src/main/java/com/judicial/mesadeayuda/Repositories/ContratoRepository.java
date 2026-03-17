@@ -29,22 +29,10 @@ public interface ContratoRepository extends JpaRepository<Contrato, Integer> {
     @Query("""
         SELECT c FROM Contrato c
         WHERE c.fechaFin >= :hoy
-          AND c.fechaFin <= :hoy + c.diasAlertaVencimiento DAY
-        ORDER BY c.fechaFin ASC
-    """)
-    List<Contrato> findProximosAVencer(LocalDate hoy);
-
-    /**
-     * Versión alternativa usando JPQL compatible con todos los dialectos MySQL.
-     * Usa DATEDIFF para calcular días restantes.
-     */
-    @Query("""
-        SELECT c FROM Contrato c
-        WHERE c.fechaFin >= :hoy
           AND DATEDIFF(c.fechaFin, :hoy) <= c.diasAlertaVencimiento
         ORDER BY c.fechaFin ASC
     """)
-    List<Contrato> findProximosAVencerV2(LocalDate hoy);
+    List<Contrato> findProximosAVencer(LocalDate hoy);
 
     /**
      * Contratos ya vencidos (fecha_fin en el pasado).

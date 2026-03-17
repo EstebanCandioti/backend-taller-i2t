@@ -214,8 +214,9 @@ public class SoftwareService {
 
     private Software recargarSoftware(Integer id) {
         softwareRepository.flush();
-        entityManager.clear();
-        return buscarSoftware(id);
+        Software software = buscarSoftware(id);
+        entityManager.refresh(software);
+        return software;
     }
 
     private Contrato buscarContrato(Integer id) {

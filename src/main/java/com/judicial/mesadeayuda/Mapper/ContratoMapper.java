@@ -21,6 +21,8 @@ public class ContratoMapper {
                 .monto(contrato.getMonto())
                 .diasAlertaVencimiento(contrato.getDiasAlertaVencimiento())
                 .observaciones(contrato.getObservaciones())
+                // Renovacion
+                .renovadoAId(contrato.getRenovadoAId())
                 // Estado calculado
                 .vencido(contrato.estaVencido())
                 .proximoAVencer(contrato.estaProximoAVencer())

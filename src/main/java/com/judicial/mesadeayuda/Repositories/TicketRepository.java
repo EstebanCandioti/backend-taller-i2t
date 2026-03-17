@@ -29,7 +29,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
      */
     @Query("""
                 SELECT t FROM Ticket t
-                WHERE (:estado IS NULL OR t.estado = :estado)
+                WHERE (:estados IS NULL OR t.estado IN :estados)
                   AND (:prioridad IS NULL OR t.prioridad = :prioridad)
                   AND (:juzgadoId IS NULL OR t.juzgado.id = :juzgadoId)
                   AND (:tecnicoId IS NULL OR t.tecnico.id = :tecnicoId)
@@ -37,7 +37,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
                                   OR LOWER(t.descripcion) LIKE LOWER(CONCAT('%', :q, '%')))
             """)
     Page<Ticket> findConFiltros(
-            Ticket.Estado estado,
+            List<Ticket.Estado> estados,
             Ticket.Prioridad prioridad,
             Integer juzgadoId,
             Integer tecnicoId,

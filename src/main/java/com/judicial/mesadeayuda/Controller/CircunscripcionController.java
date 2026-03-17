@@ -69,4 +69,10 @@ public class CircunscripcionController {
         circunscripcionService.eliminar(id);
         return ResponseEntity.ok(ApiResponse.success("Circunscripción eliminada"));
     }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<CircunscripcionResponseDTO>> restaurar(@PathVariable Integer id) {
+        CircunscripcionResponseDTO circ = circunscripcionService.restaurar(id);
+        return ResponseEntity.ok(ApiResponse.success("Circunscripción restaurada exitosamente", circ));
+    }
 }

@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.judicial.mesadeayuda.Audit.Auditable;
 import com.judicial.mesadeayuda.DTO.Request.UsuarioRequestDTO;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.DTO.Response.UsuarioResponseDTO;
 import com.judicial.mesadeayuda.Entities.AuditLog;
 import com.judicial.mesadeayuda.Entities.Rol;
@@ -48,6 +51,12 @@ public class UsuarioService {
         return usuarioRepository.findAll().stream()
                 .map(UsuarioMapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedResponse<UsuarioResponseDTO> listar(String rol, Boolean activo, String q, Pageable pageable) {
+        Page<Usuario> page = usuarioRepository.findConFiltros(rol, activo, q, pageable);
+        return PaginatedResponse.from(page.map(UsuarioMapper::toDTO));
     }
 
     @Transactional(readOnly = true)

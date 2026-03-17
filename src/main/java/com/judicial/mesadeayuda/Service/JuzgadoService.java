@@ -125,6 +125,24 @@ public class JuzgadoService {
         juzgadoRepository.save(juzgado);
     }
 
+    @Auditable(entidad = "Juzgado", accion = AuditLog.Accion.RESTORE)
+    public JuzgadoResponseDTO restaurar(Integer id) {
+        Juzgado juzgado = juzgadoRepository.findEliminadoById(id)
+                .orElseThrow(() -> new NotFoundException(
+                        "No se encontró un juzgado eliminado con id: " + id));
+
+        if (!juzgado.isEliminado()) {
+            throw new BusinessException("El juzgado no está eliminado");
+        }
+
+        juzgado.setEliminado(false);
+        juzgado.setFechaEliminacion(null);
+        juzgado.setEliminadoPor(null);
+
+        juzgado = juzgadoRepository.save(juzgado);
+        return JuzgadoMapper.toDTO(juzgado);
+    }
+
     // ── HELPERS ───────────────────────────────────────────────
 
     private Juzgado buscarJuzgado(Integer id) {

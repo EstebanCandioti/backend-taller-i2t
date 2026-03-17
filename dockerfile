@@ -17,6 +17,10 @@ WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
 
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+RUN chown appuser:appgroup app.jar
+USER appuser
+
 EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

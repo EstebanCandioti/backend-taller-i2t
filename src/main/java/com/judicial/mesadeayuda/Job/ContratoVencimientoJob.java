@@ -90,7 +90,7 @@ public class ContratoVencimientoJob {
      * Busca contratos próximos a vencer y envía alerta.
      */
     private void verificarProximosAVencer(LocalDate hoy, List<Usuario> destinatarios) {
-        List<Contrato> contratosProximos = contratoRepository.findProximosAVencerV2(hoy);
+        List<Contrato> contratosProximos = contratoRepository.findProximosAVencer(hoy);
 
         if (contratosProximos.isEmpty()) {
             log.info("No hay contratos próximos a vencer.");
@@ -136,6 +136,7 @@ public class ContratoVencimientoJob {
 
     /**
      * Envía email de alerta de contratos próximos a vencer.
+     * Si falla el envío a un destinatario, notifica via WebSocket.
      */
     private void enviarAlertas(List<Contrato> contratos, List<Usuario> destinatarios, String tipo) {
         int enviados = 0;
@@ -148,6 +149,8 @@ public class ContratoVencimientoJob {
             } catch (Exception e) {
                 fallidos++;
                 log.error("Error enviando alerta ({}) a {}: {}", tipo, usuario.getEmail(), e.getMessage());
+                notificarFalloEmail(usuario.getEmail(),
+                        "Fallo al enviar email de alerta de contratos " + tipo + " a " + usuario.getEmail());
             }
         }
 
@@ -156,6 +159,7 @@ public class ContratoVencimientoJob {
 
     /**
      * Envía email de alerta urgente por contratos vencidos con hardware sin cobertura.
+     * Si falla el envío a un destinatario, notifica via WebSocket.
      */
     private void enviarAlertasVencidos(List<Contrato> contratos, List<Usuario> destinatarios) {
         int enviados = 0;
@@ -168,10 +172,29 @@ public class ContratoVencimientoJob {
             } catch (Exception e) {
                 fallidos++;
                 log.error("Error enviando alerta de vencidos a {}: {}", usuario.getEmail(), e.getMessage());
+                notificarFalloEmail(usuario.getEmail(),
+                        "Fallo al enviar email de alerta de contratos vencidos a " + usuario.getEmail());
             }
         }
 
         log.info("Alertas de contratos vencidos con hardware: {} enviados, {} fallidos", enviados, fallidos);
+    }
+
+    /**
+     * Notifica a todos los Admin via WebSocket que falló un envío de email.
+     */
+    private void notificarFalloEmail(String emailFallido, String mensaje) {
+        try {
+            notificationWsService.notificarPorRol(
+                    List.of("Admin"),
+                    "EMAIL_FALLIDO",
+                    "Sistema",
+                    null,
+                    mensaje
+            );
+        } catch (Exception e) {
+            log.error("Error al notificar fallo de email via WebSocket: {}", e.getMessage());
+        }
     }
 
     /**

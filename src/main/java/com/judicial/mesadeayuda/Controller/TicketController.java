@@ -57,7 +57,7 @@ public class TicketController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<PaginatedResponse<TicketResponseDTO>>> listar(
-            @RequestParam(required = false) Ticket.Estado estado,
+            @RequestParam(required = false) List<Ticket.Estado> estado,
             @RequestParam(required = false) Ticket.Prioridad prioridad,
             @RequestParam(required = false) Integer juzgadoId,
             @RequestParam(required = false) Integer tecnicoId,
@@ -118,6 +118,13 @@ public class TicketController {
             @PathVariable Integer id) {
         TicketResponseDTO ticket = ticketService.pasarAEnCurso(id);
         return ResponseEntity.ok(ApiResponse.success("Ticket pasado a EN_CURSO", ticket));
+    }
+
+    @PutMapping("/{id}/volver-asignado")
+    public ResponseEntity<ApiResponse<TicketResponseDTO>> volverAAsignado(
+            @PathVariable Integer id) {
+        TicketResponseDTO ticket = ticketService.volverAAsignado(id);
+        return ResponseEntity.ok(ApiResponse.success("Ticket volvió a estado ASIGNADO", ticket));
     }
 
     @PutMapping("/{id}/cerrar")

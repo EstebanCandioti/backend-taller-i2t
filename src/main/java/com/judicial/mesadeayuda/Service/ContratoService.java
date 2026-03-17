@@ -62,7 +62,7 @@ public class ContratoService {
 
     @Transactional(readOnly = true)
     public List<ContratoResponseDTO> proximosAVencer() {
-        return contratoRepository.findProximosAVencerV2(LocalDate.now()).stream()
+        return contratoRepository.findProximosAVencer(LocalDate.now()).stream()
                 .map(this::mapearContratoResponse)
                 .collect(Collectors.toList());
     }
@@ -124,6 +124,12 @@ public class ContratoService {
     public ContratoResponseDTO renovar(Integer id, ContratoRenovarRequestDTO dto) {
         Contrato original = buscarContrato(id);
 
+        if (original.getRenovadoAId() != null) {
+            throw new BusinessException(
+                    "Este contrato ya fue renovado. No se puede renovar nuevamente.",
+                    HttpStatus.CONFLICT);
+        }
+
         validarFechas(dto.getFechaInicio(), dto.getFechaFin());
 
         if (dto.getFechaInicio().isBefore(original.getFechaFin())) {
@@ -152,6 +158,10 @@ public class ContratoService {
                 original.getSoftwareLicencias() != null ? new ArrayList<>(original.getSoftwareLicencias())
                         : new ArrayList<>());
         renovado = contratoRepository.save(renovado);
+
+        // Marcar el contrato original como renovado
+        original.setRenovadoAId(renovado.getId());
+        contratoRepository.save(original);
 
         List<Hardware> hardwareOriginal = hardwareRepository.findByContratoId(original.getId());
         if (hardwareOriginal != null && !hardwareOriginal.isEmpty()) {

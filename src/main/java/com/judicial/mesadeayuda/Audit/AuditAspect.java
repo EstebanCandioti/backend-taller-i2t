@@ -81,6 +81,7 @@ public class AuditAspect {
             }
         } catch (Exception e) {
             log.warn("Error capturando estado anterior para auditoría: {}", e.getMessage());
+            valorAnteriorHolder.remove();
             // No interrumpir la operación principal
         }
     }

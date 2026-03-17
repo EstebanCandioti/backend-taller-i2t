@@ -105,6 +105,24 @@ public class CircunscripcionService {
         circunscripcionRepository.save(circ);
     }
 
+    @Auditable(entidad = "Circunscripcion", accion = AuditLog.Accion.RESTORE)
+    public CircunscripcionResponseDTO restaurar(Integer id) {
+        Circunscripcion circ = circunscripcionRepository.findEliminadoById(id)
+                .orElseThrow(() -> new NotFoundException(
+                        "No se encontró una circunscripción eliminada con id: " + id));
+
+        if (!circ.isEliminado()) {
+            throw new BusinessException("La circunscripción no está eliminada");
+        }
+
+        circ.setEliminado(false);
+        circ.setFechaEliminacion(null);
+        circ.setEliminadoPor(null);
+
+        circ = circunscripcionRepository.save(circ);
+        return CircunscripcionMapper.toDTO(circ);
+    }
+
     // ── HELPERS ───────────────────────────────────────────────
 
     private Circunscripcion buscarCircunscripcion(Integer id) {

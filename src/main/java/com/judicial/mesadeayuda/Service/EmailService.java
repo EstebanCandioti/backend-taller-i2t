@@ -21,11 +21,12 @@ import com.judicial.mesadeayuda.Entities.Ticket;
  * Service de envío de emails.
  *
  * Casos de uso:
- *   1. Notificación al técnico cuando se le asigna un ticket (@Async).
- *   2. Alerta de contratos próximos a vencer (llamado desde job programado).
+ *   1. Notificación al técnico cuando se le asigna un ticket (@Async — no bloquea HTTP).
+ *   2. Alertas de vencimiento (llamadas desde Jobs programados — síncronas para que
+ *      el Job pueda detectar fallos y notificar via WebSocket).
  *
- * Los emails son asíncronos para no bloquear las operaciones principales.
- * Si falla el envío, se loguea el error pero NO se revierte la operación.
+ * Si falla el envío de asignación, se loguea sin interrumpir la operación.
+ * Si falla el envío de alerta, se propaga la excepción al Job para que notifique.
  */
 @Service
 public class EmailService {
@@ -92,58 +93,51 @@ public class EmailService {
 
         } catch (Exception e) {
             log.error("Error al enviar email de asignación para ticket #{}: {}",
-                    ticket.getId(), e.getMessage());
+                    ticket.getId(), getRootCauseMessage(e), e);
         }
     }
 
     /**
      * Email de alerta para contratos próximos a vencer.
-     * Llamado desde el job programado diario.
-     *
-     * @param contratos lista de contratos próximos a vencer
-     * @param destinatario email del admin/operario que debe recibir la alerta
+     * Síncrono — llamado desde Job programado. Propaga excepciones al Job.
      */
+    @Async
     public void enviarAlertaContratos(List<Contrato> contratos, String destinatario) {
-        try {
-            if (contratos.isEmpty()) return;
-
-            StringBuilder cuerpo = new StringBuilder();
-            cuerpo.append("Los siguientes contratos están próximos a vencer:\n\n");
-
-            for (Contrato c : contratos) {
-                long diasRestantes = ChronoUnit.DAYS.between(LocalDate.now(), c.getFechaFin());
-                cuerpo.append(String.format(
-                        "• %s (Proveedor: %s) - Vence: %s (%d días restantes)\n",
-                        c.getNombre(),
-                        c.getProveedor(),
-                        c.getFechaFin().format(DATE_FORMATTER),
-                        diasRestantes
-                ));
-            }
-
-            cuerpo.append("\nIngrese al sistema para revisar los detalles de cada contrato.\n\n");
-            cuerpo.append("— Sistema Mesa de Ayuda - Poder Judicial Provincial");
-
-            String asunto = "⚠ Alerta: " + contratos.size() + " contrato(s) próximo(s) a vencer";
-
-            enviar(destinatario, asunto, cuerpo.toString());
-            log.info("Email de alerta de contratos enviado a {} ({} contratos)", destinatario, contratos.size());
-
-        } catch (Exception e) {
-            log.error("Error al enviar alerta de contratos a {}: {}", destinatario, e.getMessage());
-        }
-    }
-
-    /**
- * Email de alerta urgente por contratos vencidos con hardware sin cobertura.
- * Llamado desde ContratoVencimientoJob.
- */
-public void enviarAlertaContratosVencidos(List<Contrato> contratos, String destinatario) {
-    try {
         if (contratos.isEmpty()) return;
 
         StringBuilder cuerpo = new StringBuilder();
-        cuerpo.append("⚠ ALERTA URGENTE: Los siguientes contratos están VENCIDOS y tienen hardware activo sin cobertura:\n\n");
+        cuerpo.append("Los siguientes contratos están próximos a vencer:\n\n");
+
+        for (Contrato c : contratos) {
+            long diasRestantes = ChronoUnit.DAYS.between(LocalDate.now(), c.getFechaFin());
+            cuerpo.append(String.format(
+                    "• %s (Proveedor: %s) - Vence: %s (%d días restantes)\n",
+                    c.getNombre(),
+                    c.getProveedor(),
+                    c.getFechaFin().format(DATE_FORMATTER),
+                    diasRestantes
+            ));
+        }
+
+        cuerpo.append("\nIngrese al sistema para revisar los detalles de cada contrato.\n\n");
+        cuerpo.append("— Sistema Mesa de Ayuda - Poder Judicial Provincial");
+
+        String asunto = "Alerta: " + contratos.size() + " contrato(s) proximo(s) a vencer";
+
+        enviar(destinatario, asunto, cuerpo.toString());
+        log.info("Email de alerta de contratos enviado a {} ({} contratos)", destinatario, contratos.size());
+    }
+
+    /**
+     * Email de alerta urgente por contratos vencidos con hardware sin cobertura.
+     * Síncrono — llamado desde Job programado. Propaga excepciones al Job.
+     */
+    @Async
+    public void enviarAlertaContratosVencidos(List<Contrato> contratos, String destinatario) {
+        if (contratos.isEmpty()) return;
+
+        StringBuilder cuerpo = new StringBuilder();
+        cuerpo.append("ALERTA URGENTE: Los siguientes contratos están VENCIDOS y tienen hardware activo sin cobertura:\n\n");
 
         for (Contrato c : contratos) {
             long diasVencido = ChronoUnit.DAYS.between(c.getFechaFin(), LocalDate.now());
@@ -160,22 +154,18 @@ public void enviarAlertaContratosVencidos(List<Contrato> contratos, String desti
         cuerpo.append("\nEs necesario renovar estos contratos o reasignar el hardware a contratos vigentes.\n\n");
         cuerpo.append("— Sistema Mesa de Ayuda - Poder Judicial Provincial");
 
-        String asunto = "🚨 URGENTE: " + contratos.size() + " contrato(s) vencido(s) con hardware activo";
+        String asunto = "URGENTE: " + contratos.size() + " contrato(s) vencido(s) con hardware activo";
 
         enviar(destinatario, asunto, cuerpo.toString());
         log.info("Email de alerta de contratos vencidos enviado a {} ({} contratos)", destinatario, contratos.size());
-
-    } catch (Exception e) {
-        log.error("Error al enviar alerta de contratos vencidos a {}: {}", destinatario, e.getMessage());
     }
-}
 
-/**
- * Email de alerta por licencias de software próximas a vencer.
- * Llamado desde SoftwareVencimientoJob.
- */
-public void enviarAlertaSoftwareProximoAVencer(List<Software> licencias, String destinatario) {
-    try {
+    /**
+     * Email de alerta por licencias de software próximas a vencer.
+     * Síncrono — llamado desde Job programado. Propaga excepciones al Job.
+     */
+    @Async
+    public void enviarAlertaSoftwareProximoAVencer(List<Software> licencias, String destinatario) {
         if (licencias.isEmpty()) return;
 
         StringBuilder cuerpo = new StringBuilder();
@@ -196,26 +186,22 @@ public void enviarAlertaSoftwareProximoAVencer(List<Software> licencias, String 
         cuerpo.append("\nIngrese al sistema para revisar los detalles y gestionar las renovaciones.\n\n");
         cuerpo.append("— Sistema Mesa de Ayuda - Poder Judicial Provincial");
 
-        String asunto = "⚠ Alerta: " + licencias.size() + " licencia(s) de software próxima(s) a vencer";
+        String asunto = "Alerta: " + licencias.size() + " licencia(s) de software proxima(s) a vencer";
 
         enviar(destinatario, asunto, cuerpo.toString());
         log.info("Email de alerta de software enviado a {} ({} licencias)", destinatario, licencias.size());
-
-    } catch (Exception e) {
-        log.error("Error al enviar alerta de software a {}: {}", destinatario, e.getMessage());
     }
-}
 
-/**
- * Email de alerta urgente por licencias de software ya vencidas.
- * Llamado desde SoftwareVencimientoJob.
- */
-public void enviarAlertaSoftwareVencido(List<Software> licencias, String destinatario) {
-    try {
+    /**
+     * Email de alerta urgente por licencias de software ya vencidas.
+     * Síncrono — llamado desde Job programado. Propaga excepciones al Job.
+     */
+    @Async
+    public void enviarAlertaSoftwareVencido(List<Software> licencias, String destinatario) {
         if (licencias.isEmpty()) return;
 
         StringBuilder cuerpo = new StringBuilder();
-        cuerpo.append("⚠ ALERTA URGENTE: Las siguientes licencias de software están VENCIDAS:\n\n");
+        cuerpo.append("ALERTA URGENTE: Las siguientes licencias de software están VENCIDAS:\n\n");
 
         for (Software s : licencias) {
             long diasVencido = ChronoUnit.DAYS.between(s.getFechaVencimiento(), LocalDate.now());
@@ -232,15 +218,11 @@ public void enviarAlertaSoftwareVencido(List<Software> licencias, String destina
         cuerpo.append("\nEs necesario renovar estas licencias para mantener el cumplimiento.\n\n");
         cuerpo.append("— Sistema Mesa de Ayuda - Poder Judicial Provincial");
 
-        String asunto = "🚨 URGENTE: " + licencias.size() + " licencia(s) de software VENCIDA(s)";
+        String asunto = "URGENTE: " + licencias.size() + " licencia(s) de software VENCIDA(s)";
 
         enviar(destinatario, asunto, cuerpo.toString());
         log.info("Email de alerta de software vencido enviado a {} ({} licencias)", destinatario, licencias.size());
-
-    } catch (Exception e) {
-        log.error("Error al enviar alerta de software vencido a {}: {}", destinatario, e.getMessage());
     }
-}
 
     // ── HELPER ────────────────────────────────────────────────
 
@@ -251,5 +233,15 @@ public void enviarAlertaSoftwareVencido(List<Software> licencias, String destina
         message.setSubject(asunto);
         message.setText(cuerpo);
         mailSender.send(message);
+    }
+
+    private String getRootCauseMessage(Exception exception) {
+        Throwable root = exception;
+
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+
+        return root.getMessage() != null ? root.getMessage() : exception.getMessage();
     }
 }

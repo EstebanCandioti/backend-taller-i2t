@@ -3,6 +3,8 @@ package com.judicial.mesadeayuda.Repositories;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -82,6 +84,16 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
                    OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%'))
             """)
     List<Usuario> buscarPorTexto(String q);
+
+    @Query("""
+                SELECT u FROM Usuario u
+                WHERE (:rol IS NULL OR u.rol.nombre = :rol)
+                  AND (:activo IS NULL OR u.activo = :activo)
+                  AND (:q IS NULL OR LOWER(u.nombre) LIKE LOWER(CONCAT('%', :q, '%'))
+                                  OR LOWER(u.apellido) LIKE LOWER(CONCAT('%', :q, '%'))
+                                  OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%')))
+            """)
+    Page<Usuario> findConFiltros(String rol, Boolean activo, String q, Pageable pageable);
 
     @Query(value = "SELECT * FROM usuarios WHERE id = :id AND eliminado = 1", nativeQuery = true)
     Optional<Usuario> findEliminadoById(Integer id);

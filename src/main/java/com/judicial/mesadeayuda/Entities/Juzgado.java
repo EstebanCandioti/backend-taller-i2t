@@ -25,7 +25,7 @@ import lombok.Setter;
 
 @Entity
 @Table(name="juzgados")
-@SQLRestriction("eliminado=0")
+@SQLRestriction("eliminado = 0")
 @Getter
 @Setter
 @NoArgsConstructor

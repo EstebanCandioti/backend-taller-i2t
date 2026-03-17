@@ -21,7 +21,7 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "roles")
-@SQLRestriction("eliminado = false")
+@SQLRestriction("eliminado = 0")
 @Getter
 @Setter
 @NoArgsConstructor

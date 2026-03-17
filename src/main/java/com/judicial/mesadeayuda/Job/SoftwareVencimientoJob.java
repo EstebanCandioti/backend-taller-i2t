@@ -109,6 +109,7 @@ public class SoftwareVencimientoJob {
             } catch (Exception e) {
                 fallidos++;
                 log.error("Error enviando alerta de software a {}: {}", usuario.getEmail(), e.getMessage());
+                notificarFalloEmail("Fallo al enviar email de alerta de software proximo a vencer a " + usuario.getEmail());
             }
         }
 
@@ -151,10 +152,28 @@ public class SoftwareVencimientoJob {
             } catch (Exception e) {
                 fallidos++;
                 log.error("Error enviando alerta de software vencido a {}: {}", usuario.getEmail(), e.getMessage());
+                notificarFalloEmail("Fallo al enviar email de alerta de software vencido a " + usuario.getEmail());
             }
         }
 
         log.info("Alertas de licencias vencidas: {} enviados, {} fallidos", enviados, fallidos);
+    }
+
+    /**
+     * Notifica a todos los Admin via WebSocket que falló un envío de email.
+     */
+    private void notificarFalloEmail(String mensaje) {
+        try {
+            notificationWsService.notificarPorRol(
+                    List.of("Admin"),
+                    "EMAIL_FALLIDO",
+                    "Sistema",
+                    null,
+                    mensaje
+            );
+        } catch (Exception e) {
+            log.error("Error al notificar fallo de email via WebSocket: {}", e.getMessage());
+        }
     }
 
     /**

@@ -72,4 +72,10 @@ public class JuzgadoController {
         juzgadoService.eliminar(id);
         return ResponseEntity.ok(ApiResponse.success("Juzgado eliminado"));
     }
+
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<JuzgadoResponseDTO>> restaurar(@PathVariable Integer id) {
+        JuzgadoResponseDTO juzgado = juzgadoService.restaurar(id);
+        return ResponseEntity.ok(ApiResponse.success("Juzgado restaurado exitosamente", juzgado));
+    }
 }

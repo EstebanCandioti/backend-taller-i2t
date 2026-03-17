@@ -23,7 +23,7 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "circunscripciones")
-@SQLRestriction("eliminado=false")
+@SQLRestriction("eliminado = 0")
 @Getter
 @Setter
 @NoArgsConstructor

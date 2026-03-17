@@ -75,7 +75,7 @@ public class TicketService {
      * - Técnico: solo ve sus tickets asignados.
      */
     @Transactional(readOnly = true)
-    public PaginatedResponse<TicketResponseDTO> listar(Ticket.Estado estado, Ticket.Prioridad prioridad,
+    public PaginatedResponse<TicketResponseDTO> listar(List<Ticket.Estado> estados, Ticket.Prioridad prioridad,
                                                         Integer juzgadoId, Integer tecnicoId,
                                                         String q, Pageable pageable) {
         CustomUserDetails user = getUsuarioAutenticado();
@@ -86,7 +86,7 @@ public class TicketService {
         if ("Técnico".equals(rol)) {
             page = ticketRepository.findByTecnicoId(user.getId(), pageable);
         } else {
-            page = ticketRepository.findConFiltros(estado, prioridad, juzgadoId, tecnicoId, q, pageable);
+            page = ticketRepository.findConFiltros(estados, prioridad, juzgadoId, tecnicoId, q, pageable);
         }
 
         return PaginatedResponse.from(page.map(TicketMapper::toDTO));
@@ -342,6 +342,36 @@ public class TicketService {
                 "Ticket",
                 ticket.getId(),
                 "Ticket pasó a EN_CURSO: " + ticket.getTitulo()
+        );
+
+        return TicketMapper.toDTO(ticket);
+    }
+
+    // ── VOLVER A ASIGNADO ─────────────────────────────────────
+
+    /**
+     * Retrocede el ticket de EN_CURSO a ASIGNADO.
+     * Útil si el técnico no pudo continuar con la resolución.
+     */
+    @Auditable(entidad = "Ticket", accion = AuditLog.Accion.UPDATE)
+    public TicketResponseDTO volverAAsignado(Integer id) {
+        Ticket ticket = buscarTicket(id);
+
+        if (ticket.getEstado() != Ticket.Estado.EN_CURSO) {
+            throw new BusinessException(
+                    "Solo se puede volver a ASIGNADO desde estado EN_CURSO. Estado actual: " + ticket.getEstado(),
+                    HttpStatus.CONFLICT);
+        }
+
+        ticket.setEstado(Ticket.Estado.ASIGNADO);
+        ticket = ticketRepository.save(ticket);
+
+        notificationWsService.notificarPorRol(
+                List.of("Admin", "Operario"),
+                "TICKET_ASIGNADO",
+                "Ticket",
+                ticket.getId(),
+                "Ticket volvió a ASIGNADO: " + ticket.getTitulo()
         );
 
         return TicketMapper.toDTO(ticket);

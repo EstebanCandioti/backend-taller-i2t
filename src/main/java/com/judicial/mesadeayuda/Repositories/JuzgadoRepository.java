@@ -1,6 +1,7 @@
 package com.judicial.mesadeayuda.Repositories;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -75,4 +76,11 @@ public interface JuzgadoRepository extends JpaRepository<Juzgado, Integer> {
           AND t.estado <> 'CERRADO'
     """)
     boolean tieneTicketsActivos(Integer juzgadoId);
+
+    /**
+     * Busca un juzgado eliminado por ID (bypasea @SQLRestriction).
+     * Usado para restaurar registros soft-deleted.
+     */
+    @Query(value = "SELECT * FROM juzgados WHERE id = :id AND eliminado = 1", nativeQuery = true)
+    Optional<Juzgado> findEliminadoById(Integer id);
 }

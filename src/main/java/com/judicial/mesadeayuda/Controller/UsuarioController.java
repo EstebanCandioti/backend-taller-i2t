@@ -3,6 +3,8 @@ package com.judicial.mesadeayuda.Controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.judicial.mesadeayuda.DTO.Request.UsuarioRequestDTO;
 import com.judicial.mesadeayuda.DTO.Response.ApiResponse;
+import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
 import com.judicial.mesadeayuda.DTO.Response.UsuarioResponseDTO;
 import com.judicial.mesadeayuda.Service.UsuarioService;
 
@@ -51,8 +54,20 @@ public class UsuarioController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<UsuarioResponseDTO>>> listarTodos() {
-        List<UsuarioResponseDTO> usuarios = usuarioService.listarTodos();
+    public ResponseEntity<ApiResponse<PaginatedResponse<UsuarioResponseDTO>>> listar(
+            @RequestParam(required = false) String rol,
+            @RequestParam(required = false) Boolean activo,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "apellido,asc") String sort) {
+
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")
+                ? Sort.Direction.DESC : Sort.Direction.ASC;
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+
+        PaginatedResponse<UsuarioResponseDTO> usuarios = usuarioService.listar(rol, activo, q, pageable);
         return ResponseEntity.ok(ApiResponse.success("Usuarios obtenidos", usuarios));
     }
 
