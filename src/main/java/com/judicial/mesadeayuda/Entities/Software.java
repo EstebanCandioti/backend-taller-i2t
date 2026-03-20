@@ -99,11 +99,6 @@ public class Software {
     @Column(name = "observaciones", columnDefinition = "TEXT")
     private String observaciones;
 
-    /**
-     * Contratos asociados a este software (many-to-many inverso).
-     */
-    @ManyToMany(mappedBy = "softwareLicencias", fetch = FetchType.LAZY)
-    private List<Contrato> contratos;
 
     // ── Soft-delete ───────────────────────────────────────────
     @Column(name = "eliminado", nullable = false)

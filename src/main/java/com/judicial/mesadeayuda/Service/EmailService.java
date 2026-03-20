@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import com.judicial.mesadeayuda.Entities.Contrato;
 import com.judicial.mesadeayuda.Entities.Software;
 import com.judicial.mesadeayuda.Entities.Ticket;
+import com.judicial.mesadeayuda.Repositories.HardwareRepository;
 
 /**
  * Service de envío de emails.
@@ -35,12 +36,14 @@ public class EmailService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final JavaMailSender mailSender;
+    private final HardwareRepository hardwareRepository;
 
     @Value("${app.mail.from}")
     private String fromEmail;
 
-    public EmailService(JavaMailSender mailSender) {
+    public EmailService(JavaMailSender mailSender, HardwareRepository hardwareRepository) {
         this.mailSender = mailSender;
+        this.hardwareRepository = hardwareRepository;
     }
 
     /**
@@ -147,7 +150,7 @@ public class EmailService {
                     c.getProveedor(),
                     c.getFechaFin().format(DATE_FORMATTER),
                     diasVencido,
-                    c.getHardware() != null ? c.getHardware().size() : 0
+                    hardwareRepository.findByContratoId(c.getId()).size()
             ));
         }
 

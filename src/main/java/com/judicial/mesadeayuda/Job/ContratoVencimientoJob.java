@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import com.judicial.mesadeayuda.Entities.Contrato;
 import com.judicial.mesadeayuda.Entities.Usuario;
 import com.judicial.mesadeayuda.Repositories.ContratoRepository;
+import com.judicial.mesadeayuda.Repositories.HardwareRepository;
 import com.judicial.mesadeayuda.Repositories.UsuarioRepository;
 import com.judicial.mesadeayuda.Service.EmailService;
 import com.judicial.mesadeayuda.Service.NotificationWebSocketService;
@@ -42,15 +43,18 @@ public class ContratoVencimientoJob {
     private static final Logger log = LoggerFactory.getLogger(ContratoVencimientoJob.class);
 
     private final ContratoRepository contratoRepository;
+    private final HardwareRepository hardwareRepository;
     private final UsuarioRepository usuarioRepository;
     private final EmailService emailService;
     private final NotificationWebSocketService notificationWsService;
 
     public ContratoVencimientoJob(ContratoRepository contratoRepository,
+                                  HardwareRepository hardwareRepository,
                                   UsuarioRepository usuarioRepository,
                                   EmailService emailService,
                                   NotificationWebSocketService notificationWsService) {
         this.contratoRepository = contratoRepository;
+        this.hardwareRepository = hardwareRepository;
         this.usuarioRepository = usuarioRepository;
         this.emailService = emailService;
         this.notificationWsService = notificationWsService;
@@ -122,7 +126,7 @@ public class ContratoVencimientoJob {
 
         // Filtrar solo los que tienen hardware activo vinculado
         List<Contrato> vencidosConHardware = contratosVencidos.stream()
-                .filter(c -> c.getHardware() != null && !c.getHardware().isEmpty())
+                .filter(c -> !hardwareRepository.findByContratoId(c.getId()).isEmpty())
                 .toList();
 
         if (vencidosConHardware.isEmpty()) {

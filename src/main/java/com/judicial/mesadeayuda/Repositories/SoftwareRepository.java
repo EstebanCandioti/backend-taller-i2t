@@ -30,8 +30,10 @@ public interface SoftwareRepository extends JpaRepository<Software, Integer> {
         WHERE (:contratoId IS NULL OR s.contrato.id = :contratoId)
           AND (:juzgadoId IS NULL OR j.id = :juzgadoId)
           AND (:proveedor IS NULL OR LOWER(s.proveedor) LIKE LOWER(CONCAT('%', :proveedor, '%')))
+          AND (:q IS NULL OR LOWER(s.nombre) LIKE LOWER(CONCAT('%', :q, '%'))
+               OR LOWER(s.proveedor) LIKE LOWER(CONCAT('%', :q, '%')))
     """)
-    Page<Software> findConFiltros(Integer contratoId, Integer juzgadoId, String proveedor, Pageable pageable);
+    Page<Software> findConFiltros(Integer contratoId, Integer juzgadoId, String proveedor, String q, Pageable pageable);
 
     /**
      * Licencias próximas a vencer en los próximos X días.

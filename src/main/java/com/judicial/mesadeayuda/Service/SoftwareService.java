@@ -76,8 +76,8 @@ public class SoftwareService {
 
     @Transactional(readOnly = true)
     public PaginatedResponse<SoftwareResponseDTO> listar(Integer contratoId, Integer juzgadoId,
-                                                          String proveedor, Pageable pageable) {
-        Page<Software> page = softwareRepository.findConFiltros(contratoId, juzgadoId, proveedor, pageable);
+                                                          String proveedor, String q, Pageable pageable) {
+        Page<Software> page = softwareRepository.findConFiltros(contratoId, juzgadoId, proveedor, q, pageable);
         return PaginatedResponse.from(page.map(SoftwareMapper::toDTO));
     }
 

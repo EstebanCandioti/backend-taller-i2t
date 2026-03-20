@@ -20,7 +20,6 @@ import lombok.Setter;
 import jakarta.persistence.Table;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 
@@ -82,13 +81,6 @@ public class Hardware {
 
     @Column(name = "observaciones", columnDefinition = "TEXT")
     private String observaciones;
-
-    /**
-     * Contratos asociados a este hardware (many-to-many inverso).
-     * mappedBy indica que Contrato es el dueño de la relación JoinTable.
-     */
-    @ManyToMany(mappedBy = "hardware", fetch = FetchType.LAZY)
-    private List<Contrato> contratos;
 
     /**
      * Software instalado en este equipo.

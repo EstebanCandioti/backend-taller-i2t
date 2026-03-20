@@ -88,8 +88,6 @@ public class ContratoService {
                 .diasAlertaVencimiento(
                         dto.getDiasAlertaVencimiento() != null ? dto.getDiasAlertaVencimiento() : 30)
                 .observaciones(dto.getObservaciones())
-                .hardware(resolverHardware(dto.getHardwareIds()))
-                .softwareLicencias(resolverSoftware(dto.getSoftwareIds()))
                 .build();
 
         contrato = contratoRepository.save(contrato);
@@ -112,8 +110,6 @@ public class ContratoService {
             contrato.setDiasAlertaVencimiento(dto.getDiasAlertaVencimiento());
         }
         contrato.setObservaciones(dto.getObservaciones());
-        contrato.setHardware(resolverHardware(dto.getHardwareIds()));
-        contrato.setSoftwareLicencias(resolverSoftware(dto.getSoftwareIds()));
 
         contrato = contratoRepository.save(contrato);
         sincronizarAsignacionesDirectas(contrato, dto.getHardwareIds(), dto.getSoftwareIds());
@@ -151,12 +147,6 @@ public class ContratoService {
                         : "Renovación del contrato #" + original.getId() + " - " + original.getNombre())
                 .build();
 
-        renovado = contratoRepository.save(renovado);
-        renovado.setHardware(
-                original.getHardware() != null ? new ArrayList<>(original.getHardware()) : new ArrayList<>());
-        renovado.setSoftwareLicencias(
-                original.getSoftwareLicencias() != null ? new ArrayList<>(original.getSoftwareLicencias())
-                        : new ArrayList<>());
         renovado = contratoRepository.save(renovado);
 
         // Marcar el contrato original como renovado
@@ -226,26 +216,6 @@ public class ContratoService {
         if (fechaFin.isBefore(fechaInicio)) {
             throw new BusinessException("La fecha de fin no puede ser anterior a la fecha de inicio");
         }
-    }
-
-    private List<Hardware> resolverHardware(List<Integer> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return ids.stream()
-                .map(hwId -> hardwareRepository.findById(hwId)
-                        .orElseThrow(() -> new NotFoundException("Hardware", hwId)))
-                .collect(Collectors.toList());
-    }
-
-    private List<Software> resolverSoftware(List<Integer> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return ids.stream()
-                .map(swId -> softwareRepository.findById(swId)
-                        .orElseThrow(() -> new NotFoundException("Software", swId)))
-                .collect(Collectors.toList());
     }
 
     private void sincronizarAsignacionesDirectas(Contrato contrato, List<Integer> hardwareIds, List<Integer> softwareIds) {

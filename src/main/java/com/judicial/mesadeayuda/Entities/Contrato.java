@@ -3,8 +3,6 @@ package com.judicial.mesadeayuda.Entities;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-
 import org.hibernate.annotations.SQLRestriction;
 
 import jakarta.persistence.Column;
@@ -14,8 +12,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -78,30 +74,6 @@ public class Contrato {
      */
     @Column(name = "renovado_a_id")
     private Integer renovadoAId;
-
-    /**
-     * Hardware asociado a este contrato (many-to-many).
-     * Un contrato puede cubrir múltiples equipos.
-     */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "contrato_hardware",
-        joinColumns = @JoinColumn(name = "contrato_id"),
-        inverseJoinColumns = @JoinColumn(name = "hardware_id")
-    )
-    private List<Hardware> hardware;
-
-    /**
-     * Software asociado a este contrato (many-to-many).
-     * Un contrato puede cubrir múltiples licencias.
-     */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "contrato_software",
-        joinColumns = @JoinColumn(name = "contrato_id"),
-        inverseJoinColumns = @JoinColumn(name = "software_id")
-    )
-    private List<Software> softwareLicencias;
 
     // ── Soft-delete ───────────────────────────────────────────
     @Column(name = "eliminado", nullable = false)

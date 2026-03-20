@@ -1,6 +1,7 @@
 package com.judicial.mesadeayuda.Mapper;
 
 import java.time.LocalDate;
+import java.util.Collections;
 
 import com.judicial.mesadeayuda.DTO.Response.HardwareResponseDTO;
 import com.judicial.mesadeayuda.Entities.Contrato;
@@ -31,6 +32,8 @@ public class HardwareMapper {
                 .contratoNombre(contrato != null ? contrato.getNombre() : null)
                 .contratoFechaFin(contrato != null ? contrato.getFechaFin() : null)
                 .contratoVencido(contrato != null && contrato.getFechaFin().isBefore(LocalDate.now()))
+                // Software se completa en HardwareService via pivot SoftwareHardware
+                .software(Collections.emptyList())
                 .build();
     }
 }

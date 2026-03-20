@@ -30,6 +30,7 @@ public class UsuarioRequestDTO {
     @Size(min = 6, max = 100, message = "La contraseña debe tener entre 6 y 100 caracteres")
     private String password;
 
+    @NotBlank(message = "El teléfono es obligatorio")
     @Size(max = 30, message = "El teléfono no puede superar los 30 caracteres")
     private String telefono;
 

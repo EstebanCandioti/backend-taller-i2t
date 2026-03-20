@@ -45,6 +45,7 @@ public class SoftwareController {
             @RequestParam(required = false) Integer contratoId,
             @RequestParam(required = false) Integer juzgadoId,
             @RequestParam(required = false) String proveedor,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "nombre,asc") String sort) {
@@ -54,7 +55,7 @@ public class SoftwareController {
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
         PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
 
-        PaginatedResponse<SoftwareResponseDTO> software = softwareService.listar(contratoId, juzgadoId, proveedor, pageable);
+        PaginatedResponse<SoftwareResponseDTO> software = softwareService.listar(contratoId, juzgadoId, proveedor, q, pageable);
         return ResponseEntity.ok(ApiResponse.success("Software obtenido", software));
     }
 

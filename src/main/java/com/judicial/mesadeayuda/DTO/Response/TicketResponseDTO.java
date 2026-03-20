@@ -27,6 +27,7 @@ public class TicketResponseDTO {
     // Técnico asignado (puede ser null)
     private Integer tecnicoId;
     private String tecnicoNombreCompleto;
+    private String tecnicoTelefono;
 
     // Hardware relacionado (puede ser null)
     private Integer hardwareId;
@@ -40,6 +41,7 @@ public class TicketResponseDTO {
     // Creador
     private Integer creadoPorId;
     private String creadoPorNombreCompleto;
+    private String creadoPorTelefono;
 
     // Resolución (solo presente cuando está CERRADO)
     private String resolucion;

@@ -2,7 +2,9 @@ package com.judicial.mesadeayuda.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -72,12 +74,12 @@ public class HardwareService {
     public PaginatedResponse<HardwareResponseDTO> listar(Integer juzgadoId, String clase, String modelo,
                                                           String ubicacion, String q, Pageable pageable) {
         Page<Hardware> page = hardwareRepository.findConFiltros(juzgadoId, clase, modelo, ubicacion, q, pageable);
-        return PaginatedResponse.from(page.map(HardwareMapper::toDTO));
+        return PaginatedResponse.from(page.map(this::mapearConSoftware));
     }
 
     @Transactional(readOnly = true)
     public HardwareResponseDTO obtenerPorId(Integer id) {
-        return HardwareMapper.toDTO(buscarHardware(id));
+        return mapearConSoftware(buscarHardware(id));
     }
 
     /**
@@ -123,7 +125,7 @@ public class HardwareService {
                 .build();
 
         hardware = hardwareRepository.save(hardware);
-        return HardwareMapper.toDTO(hardware);
+        return mapearConSoftware(hardware);
     }
 
     @Auditable(entidad = "Hardware", accion = AuditLog.Accion.UPDATE)
@@ -157,7 +159,7 @@ public class HardwareService {
         hardware.setObservaciones(dto.getObservaciones());
 
         hardware = hardwareRepository.save(hardware);
-        return HardwareMapper.toDTO(hardware);
+        return mapearConSoftware(hardware);
     }
 
     /**
@@ -193,6 +195,60 @@ public class HardwareService {
         hardwareRepository.save(hardware);
     }
 
+    // ── SOFTWARE ──────────────────────────────────────────────
+
+    /**
+     * Actualiza los software asociados a un hardware.
+     * Sincroniza la tabla pivot SoftwareHardware y ajusta licenciasEnUso en cada Software afectado.
+     */
+    @Auditable(entidad = "Hardware", accion = AuditLog.Accion.UPDATE)
+    public HardwareResponseDTO actualizarSoftware(Integer id, List<Integer> softwareIds) {
+        Hardware hardware = buscarHardware(id);
+
+        List<Software> softwareNuevo = resolverSoftware(softwareIds);
+
+        // Obtener vínculos actuales
+        List<SoftwareHardware> vinculosActuales = softwareHardwareRepository.findByHardwareId(id);
+        Set<Integer> softwareIdsActual = vinculosActuales.stream()
+                .map(v -> v.getSoftware().getId())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Integer> softwareIdsNuevo = softwareNuevo.stream()
+                .map(Software::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        // Validar licencias para software que se van a agregar
+        for (Software sw : softwareNuevo) {
+            if (!softwareIdsActual.contains(sw.getId())) {
+                if (sw.getLicenciasEnUso() >= sw.getCantidadLicencias()) {
+                    throw new BusinessException(
+                            "El software '" + sw.getNombre() + "' no tiene licencias disponibles (" +
+                            sw.getLicenciasEnUso() + "/" + sw.getCantidadLicencias() + ").");
+                }
+            }
+        }
+
+        // Soft-delete vínculos que ya no están
+        for (SoftwareHardware vinculo : vinculosActuales) {
+            if (!softwareIdsNuevo.contains(vinculo.getSoftware().getId())) {
+                Software sw = vinculo.getSoftware();
+                sw.setLicenciasEnUso(Math.max(0, sw.getLicenciasEnUso() - 1));
+                softwareRepository.save(sw);
+                softDeleteVinculoSoftwareHardware(vinculo);
+            }
+        }
+
+        // Crear/reactivar vínculos nuevos
+        for (Software sw : softwareNuevo) {
+            if (!softwareIdsActual.contains(sw.getId())) {
+                crearOReactivarVinculoSoftwareHardware(sw, hardware);
+                sw.setLicenciasEnUso(sw.getLicenciasEnUso() + 1);
+                softwareRepository.save(sw);
+            }
+        }
+
+        return mapearConSoftware(hardware);
+    }
+
     // ── RESTORE ───────────────────────────────────────────────
 
     /**
@@ -214,10 +270,29 @@ public class HardwareService {
         hardware.setEliminadoPor(null);
 
         hardware = hardwareRepository.save(hardware);
-        return HardwareMapper.toDTO(hardware);
+        return mapearConSoftware(hardware);
     }
 
     // ── HELPERS ───────────────────────────────────────────────
+
+    private HardwareResponseDTO mapearConSoftware(Hardware hardware) {
+        HardwareResponseDTO dto = HardwareMapper.toDTO(hardware);
+
+        dto.setSoftware(softwareHardwareRepository.findByHardwareId(hardware.getId()).stream()
+                .map(vinculo -> {
+                    Software sw = vinculo.getSoftware();
+                    return HardwareResponseDTO.SoftwareSimpleDTO.builder()
+                            .id(sw.getId())
+                            .nombre(sw.getNombre())
+                            .proveedor(sw.getProveedor())
+                            .cantidadLicencias(sw.getCantidadLicencias())
+                            .licenciasEnUso(sw.getLicenciasEnUso())
+                            .build();
+                })
+                .collect(Collectors.toList()));
+
+        return dto;
+    }
 
     private Hardware buscarHardware(Integer id) {
         return hardwareRepository.findById(id)
@@ -229,6 +304,57 @@ public class HardwareService {
                 .getAuthentication().getPrincipal();
         return usuarioRepository.findById(user.getId())
                 .orElseThrow(() -> new NotFoundException("Usuario", user.getId()));
+    }
+
+    private List<Software> resolverSoftware(List<Integer> softwareIds) {
+        if (softwareIds == null || softwareIds.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        Set<Integer> idsUnicos = new LinkedHashSet<>(softwareIds);
+        return idsUnicos.stream()
+                .map(swId -> softwareRepository.findById(swId)
+                        .orElseThrow(() -> new NotFoundException("Software", swId)))
+                .collect(Collectors.toList());
+    }
+
+    private void crearOReactivarVinculoSoftwareHardware(Software software, Hardware hardware) {
+        SoftwareHardware vinculo = softwareHardwareRepository
+                .findAnyBySoftwareIdAndHardwareId(software.getId(), hardware.getId())
+                .orElse(null);
+
+        if (vinculo == null) {
+            SoftwareHardware nuevoVinculo = SoftwareHardware.builder()
+                    .software(software)
+                    .hardware(hardware)
+                    .build();
+            nuevoVinculo = softwareHardwareRepository.save(nuevoVinculo);
+            auditLogService.registrar("SoftwareHardware", AuditLog.Accion.CREATE, nuevoVinculo.getId(),
+                    null, serializarVinculo(nuevoVinculo));
+            return;
+        }
+
+        if (!vinculo.isEliminado()) {
+            return;
+        }
+
+        String valorAnterior = serializarVinculo(vinculo);
+        vinculo.setEliminado(false);
+        vinculo.setFechaEliminacion(null);
+        vinculo.setEliminadoPor(null);
+        vinculo.setFechaAsignacion(LocalDateTime.now());
+        softwareHardwareRepository.save(vinculo);
+        auditLogService.registrar("SoftwareHardware", AuditLog.Accion.RESTORE, vinculo.getId(),
+                valorAnterior, serializarVinculo(vinculo));
+    }
+
+    private void softDeleteVinculoSoftwareHardware(SoftwareHardware vinculo) {
+        String valorAnterior = serializarVinculo(vinculo);
+        vinculo.setEliminado(true);
+        vinculo.setFechaEliminacion(LocalDateTime.now());
+        vinculo.setEliminadoPor(obtenerUsuarioActual());
+        softwareHardwareRepository.save(vinculo);
+        auditLogService.registrar("SoftwareHardware", AuditLog.Accion.DELETE, vinculo.getId(),
+                valorAnterior, null);
     }
 
     private String serializarVinculo(SoftwareHardware vinculo) {

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.judicial.mesadeayuda.DTO.Request.HardwareRequestDTO;
+import com.judicial.mesadeayuda.DTO.Request.HardwareSoftwareRequestDTO;
 import com.judicial.mesadeayuda.DTO.Response.ApiResponse;
 import com.judicial.mesadeayuda.DTO.Response.HardwareResponseDTO;
 import com.judicial.mesadeayuda.DTO.Response.PaginatedResponse;
@@ -93,6 +94,14 @@ public class HardwareController {
             @Valid @RequestBody HardwareRequestDTO dto) {
         HardwareResponseDTO hardware = hardwareService.editar(id, dto);
         return ResponseEntity.ok(ApiResponse.success("Hardware actualizado", hardware));
+    }
+
+    @PutMapping("/{id}/software")
+    public ResponseEntity<ApiResponse<HardwareResponseDTO>> actualizarSoftware(
+            @PathVariable Integer id,
+            @RequestBody HardwareSoftwareRequestDTO dto) {
+        HardwareResponseDTO response = hardwareService.actualizarSoftware(id, dto.getSoftwareIds());
+        return ResponseEntity.ok(ApiResponse.success("Software actualizado correctamente", response));
     }
 
     @DeleteMapping("/{id}")

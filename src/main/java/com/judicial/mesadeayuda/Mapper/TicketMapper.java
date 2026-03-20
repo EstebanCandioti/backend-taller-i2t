@@ -26,6 +26,7 @@ public class TicketMapper {
                 // Técnico (puede ser null)
                 .tecnicoId(ticket.getTecnico() != null ? ticket.getTecnico().getId() : null)
                 .tecnicoNombreCompleto(ticket.getTecnico() != null ? ticket.getTecnico().getNombreCompleto() : null)
+                .tecnicoTelefono(ticket.getTecnico() != null ? ticket.getTecnico().getTelefono() : null)
                 // Hardware (puede ser null)
                 .hardwareId(ticket.getHardware() != null ? ticket.getHardware().getId() : null)
                 .hardwareNroInventario(ticket.getHardware() != null ? ticket.getHardware().getNroInventario() : null)
@@ -37,6 +38,7 @@ public class TicketMapper {
                 // Creador
                 .creadoPorId(ticket.getCreadoPor().getId())
                 .creadoPorNombreCompleto(ticket.getCreadoPor().getNombreCompleto())
+                .creadoPorTelefono(ticket.getCreadoPor().getTelefono())
                 // Resolución y fechas
                 .resolucion(ticket.getResolucion())
                 .fechaCreacion(ticket.getFechaCreacion())
